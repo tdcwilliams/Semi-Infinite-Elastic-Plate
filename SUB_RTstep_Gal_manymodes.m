@@ -134,17 +134,35 @@ end
 mvec  = (0:Npolys)';
 alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
 			       %%=1/2 if no submergence.
-kap1     = -1i*gam1*H2;
-besJ1    = besselj(2*mvec'+alpC,kap1).';
-c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
-F1       = diag(c_left)*besJ1*diag(c_rt1);
 %%
-kap2  = -1i*gam2*H2;
-besJ2 = besselj(2*mvec'+alpC,kap2).';
+kap1     = -1i*gam1*H2;
+kap2     = -1i*gam2*H2;
+c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+
+if 0%%older version of besselj
+   besJ1    = besselj(2*mvec'+alpC,kap1).';
+   besJ2 = besselj(2*mvec'+alpC,kap2).';
+else
+   [NU1,Z1] = meshgrid(2*mvec'+alpC, kap1);
+   besJ1    = besselj(NU1,Z1).';
+   [NU1,Z1] = meshgrid(2*mvec'+alpC, kap2);
+   besJ2    = besselj(NU1,Z1).';
+end
+
+c_rt1 = (2./kap1).^alpC./cosh(gam1*H1);
+F1    = diag(c_left)*besJ1*diag(c_rt1);
 c_rt2 = (2./kap2).^alpC./cos(kap2);
 F2    = diag(c_left)*besJ2*diag(c_rt2);
-%%
+% kap1     = -1i*gam1*H2;
+% besJ1    = besselj(2*mvec'+alpC,kap1).';
+% c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+% c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
+% F1       = diag(c_left)*besJ1*diag(c_rt1);
+% %%
+% kap2  = -1i*gam2*H2;
+% besJ2 = besselj(2*mvec'+alpC,kap2).';
+% c_rt2 = (2./kap2).^alpC./cos(kap2);
+% F2    = diag(c_left)*besJ2*diag(c_rt2);
 
 %%MAIN KERNEL MATRIX:
 MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
