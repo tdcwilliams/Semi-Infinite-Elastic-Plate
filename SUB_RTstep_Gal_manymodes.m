@@ -98,8 +98,10 @@ H2    = HH(2);
 %%
 lam   = del0(1);
 mu    = -del0(2);
-nu    = NDphyspram(5);
-nu1   = (1-nu)*alpy^2;
+%nu    = NDphyspram(5);
+nunu        = EE(3,:);
+nunu_tilde  = (1-nunu)*alpy^2;
+%%
 sig2  = mu;
 H     = H2+sig2;
 %%
@@ -168,9 +170,9 @@ F2    = diag(c_left)*besJ2*diag(c_rt2);
 MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
 
 %%FORCING TERMS:
-fm1   = gam1.^2-nu1;
+fm1   = gam1.^2-nunu_tilde(1);
 E1    = [1+0*alp1,-Dr(1)*fm1];
-fm2   = gam2.^2-nu1;
+fm2   = gam2.^2-nu_tilde(2);
 E2    = [1+0*alp2,-Dr(2)*fm2];
 
 %%SOLVE INTEGRAL EQN:
