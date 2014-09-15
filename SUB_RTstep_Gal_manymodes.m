@@ -99,107 +99,148 @@ alp2  = rts{2};
 H2    = HH(2);
 
 %%
-lam   = del0(1);
-mu    = -del0(2);
 %nu    = NDphyspram(5);
 nunu        = EE(3,:);
 nunu_tilde  = (1-nunu)*alpy^2;
 %%
+lam   = del0(1);
+mu    = -del0(2);
 sig2  = mu;
 H     = H2+sig2;
-%%
 gam0  = gam1(1);
 alp0  = alp1(1);
-%%
-del1  = lam-sigr(1)*mu;
-BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
-Lam1  = Dr(1)*gam1.^4+del1;
-BGz1  = -Lam1.*BGzz1;
-BG1   = -Lam1.*BGz1;
-%%
-del2  = lam-sigr(2)*mu;
-BGzz2 = calc_res({Dr(2),del2,H2},gam2).*gam2./alp2;
-Lam2  = Dr(2)*gam2.^4+del2;
-BGz2  = -Lam2.*BGzz2;
-BG2   = -Lam2.*BGz2;
-%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%5th output:
-intrinsic_admittance = ( BG1(1)/BG2(1) );
+%%book-keeping
+jinc1 = 1:M1;
+jinc2 = 1:M2;
+jinc  = 1:(M1+M2);
+
+if 1
+   %%Coefficients of Green's fxn expansion
+   del1  = lam-sigr(1)*mu;
+   BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
+   Lam1  = Dr(1)*gam1.^4+del1;
+   BGz1  = -Lam1.*BGzz1;
+   BG1   = -Lam1.*BGz1;
+   %%
+   del2  = lam-sigr(2)*mu;
+   BGzz2 = calc_res({Dr(2),del2,H2},gam2).*gam2./alp2;
+   Lam2  = Dr(2)*gam2.^4+del2;
+   BGz2  = -Lam2.*BGzz2;
+   BG2   = -Lam2.*BGz2;
+
+   %% CALC Fm0 & Fmr:
+   mvec  = (0:Npolys)';
+   alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
+                                  %%=1/2 if no submergence.
+   %%
+   kap1     = -1i*gam1*H2;
+   kap2     = -1i*gam2*H2;
+   c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+
+   if 0%%older version of besselj
+      besJ1    = besselj(2*mvec'+alpC,kap1).';
+      besJ2 = besselj(2*mvec'+alpC,kap2).';
+   else
+      [NU1,Z1] = meshgrid(2*mvec'+alpC, kap1);
+      besJ1    = besselj(NU1,Z1).';
+      [NU1,Z1] = meshgrid(2*mvec'+alpC, kap2);
+      besJ2    = besselj(NU1,Z1).';
+   end
+
+   c_rt1 = (2./kap1).^alpC./cosh(gam1*H1);
+   F1    = diag(c_left)*besJ1*diag(c_rt1);
+   c_rt2 = (2./kap2).^alpC./cos(kap2);
+   F2    = diag(c_left)*besJ2*diag(c_rt2);
+   % kap1     = -1i*gam1*H2;
+   % besJ1    = besselj(2*mvec'+alpC,kap1).';
+   % c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+   % c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
+   % F1       = diag(c_left)*besJ1*diag(c_rt1);
+   % %%
+   % kap2  = -1i*gam2*H2;
+   % besJ2 = besselj(2*mvec'+alpC,kap2).';
+   % c_rt2 = (2./kap2).^alpC./cos(kap2);
+   % F2    = diag(c_left)*besJ2*diag(c_rt2);
+
+   %%MAIN KERNEL MATRIX:
+   MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
+
+   %%FORCING TERMS:
+   fm1   = gam1.^2-nunu_tilde(1);
+   E1    = [1+0*alp1,-Dr(1)*fm1];
+   fm2   = gam2.^2-nunu_tilde(2);
+   E2    = [1+0*alp2,-Dr(2)*fm2];
+
+   %%
+   finc1 = -F1(:,jinc1);
+   finc2 = F2(:,jinc2);
+   ME2   =  F2*diag(BGz2)*E2;
+   ME1   =  F1*diag(BGz1)*E1;
+
+   %%scattering caused by "forced oscillations" (\bfP_0 & \bfP_1)
+   rn_P0 = -2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]] 
+   tn_P1 = +2*diag(BGz2)*E2;%tstr=[rn,rr*[1;P1]] 
+
+   %%matrices to map uu to rn & tn coefficients
+   M_u2r = 2*diag(BG1)*F1.';
+   M_u2t = -2*diag(BG2)*F2.';
+
+   %%matrices to apply the edge conditions;
+   M_PM1 = E1.'*diag(-1./Lam1);
+   M_PM2 = E2.'*diag(-1./Lam2);
+
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%5th output:
+   intrinsic_admittance = ( BG1(1)/BG2(1) );
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+else
+   input1   = {gam1,alp1,H1;
+               gam2,alp2,H2};
+   input2   = {del0,Dr,sigr,nunu_tilde};
+   NMM      = [Npolys,M1,M2];
+   %%
+   [MK,forcing,xtra,intrinsic_admittance] =...
+      SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB);
+
+   %forcing  = {finc1,ME1;
+   %            finc2,ME2};
+   finc1 = forcing{1,1};
+   ME1   = forcing{1,2};
+   finc2 = forcing{2,1};
+   ME2   = forcing{2,2};
+
+   %xtra  = {rn_P0,tn_P1;
+   %         M_PM1,M_PM2;
+   %         M_u2r,M_u2t};
+   rn_P0 = xtra{1,1};
+   tn_P1 = xtra{1,2};
+   M_PM1 = xtra{2,1};
+   M_PM2 = xtra{2,2};
+   M_u2r = xtra{3,1};
+   M_u2t = xtra{3,2};
+end
+
 if DO_SWAP
    intrinsic_admittance = 1/intrinsic_admittance;
    y  = {{gam2/L,gam1/L},{alp2/L,alp1/L},alpy/L,[H2 H1]*L,intrinsic_admittance};
 else
    y  = {{gam1/L,gam2/L},{alp1/L,alp2/L},alpy/L,[H1 H2]*L,intrinsic_admittance};
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% CALC Fm0 & Fmr:
-mvec  = (0:Npolys)';
-alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
-                               %%=1/2 if no submergence.
-%%
-kap1     = -1i*gam1*H2;
-kap2     = -1i*gam2*H2;
-c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-
-if 0%%older version of besselj
-   besJ1    = besselj(2*mvec'+alpC,kap1).';
-   besJ2 = besselj(2*mvec'+alpC,kap2).';
-else
-   [NU1,Z1] = meshgrid(2*mvec'+alpC, kap1);
-   besJ1    = besselj(NU1,Z1).';
-   [NU1,Z1] = meshgrid(2*mvec'+alpC, kap2);
-   besJ2    = besselj(NU1,Z1).';
-end
-
-c_rt1 = (2./kap1).^alpC./cosh(gam1*H1);
-F1    = diag(c_left)*besJ1*diag(c_rt1);
-c_rt2 = (2./kap2).^alpC./cos(kap2);
-F2    = diag(c_left)*besJ2*diag(c_rt2);
-% kap1     = -1i*gam1*H2;
-% besJ1    = besselj(2*mvec'+alpC,kap1).';
-% c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-% c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
-% F1       = diag(c_left)*besJ1*diag(c_rt1);
-% %%
-% kap2  = -1i*gam2*H2;
-% besJ2 = besselj(2*mvec'+alpC,kap2).';
-% c_rt2 = (2./kap2).^alpC./cos(kap2);
-% F2    = diag(c_left)*besJ2*diag(c_rt2);
-
-%%MAIN KERNEL MATRIX:
-MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
-
-%%FORCING TERMS:
-fm1   = gam1.^2-nunu_tilde(1);
-E1    = [1+0*alp1,-Dr(1)*fm1];
-fm2   = gam2.^2-nunu_tilde(2);
-E2    = [1+0*alp2,-Dr(2)*fm2];
 
 %%SOLVE INTEGRAL EQN:
-jinc1 = 1:M1;
-jinc2 = 1:M2;
-jinc  = 1:(M1+M2);
-finc1 = -F1(:,jinc1);
-finc2 = F2(:,jinc2);
-ME2   =  F2*diag(BGz2)*E2;
-ME1   =  F1*diag(BGz1)*E1;
 uu    =  MK\[finc1, finc2, ME1, ME2];
 %%
-rr                = 2*diag(BG1)*F1.'*uu;
+rr                = M_u2r*uu;
 rr(jinc1,jinc1)   = rr(jinc1,jinc1)+eye(M1);
-rr(:,M1+M2+(1:2)) = rr(:,M1+M2+(1:2))-...
-			2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]]
+rr(:,M1+M2+(1:2)) = rr(:,M1+M2+(1:2))+rn_P0;%-...
+			%2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]]
 %%
-tt                   = -2*diag(BG2)*F2.'*uu;
+tt                   = M_u2t*uu;
 tt(jinc2,M1+jinc2)   = tt(jinc2,M1+jinc2)+eye(M2);%Min1+Min2+(3:4)
-tt(:,M1+M2+(3:4))    = tt(:,M1+M2+(3:4))+...
-			2*diag(BGz2)*E2;%tstt=[tn tt*[1;P1]]
+tt(:,M1+M2+(3:4))    = tt(:,M1+M2+(3:4))+tn_P1;%...
+			%2*diag(BGz2)*E2;%tstt=[tn tt*[1;P1]]
 %%
-M_PM1 = E1.'*diag(-1./Lam1);
-M_PM2 = E2.'*diag(-1./Lam2);
 
 %%APPLY EDGE CONDITIONS:
 if Dr(1)==0%%water on left:
