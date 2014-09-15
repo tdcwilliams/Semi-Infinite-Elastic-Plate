@@ -105,7 +105,7 @@ else
    Z_out = {{Rts{2}/L,Rts{1}/L},{rts{2}/L,rts{1}/L},...
              HH([2 1])*L,alpy/L,del0,L};
 end
-Z_out{1}{1}(1:10),Z_out{1}{2}(1:10)
+%Z_out{1}{1}(1:10),Z_out{1}{2}(1:10)
 
 hr    = hh/hh(2);
 Er    = EE(1,:)/EE(1,2);
@@ -130,12 +130,12 @@ if 0%%test rts etc
 end
 
 %%
-lam   = del0(1);
-mu    = -del0(2);
-nu    = NDphyspram(5);
-nu1   = (1-nu)*alpy^2;
-sig2  = mu;
-H     = H2+sig2;
+lam         = del0(1);
+mu          = -del0(2);
+nunu        = EE(3,:);%NDphyspram(5);
+nunu_tilde  = (1-nunu)*alpy^2;
+sig2        = mu;
+H           = H2+sig2;
 %%
 gam0  = gam1(1);
 alp0  = alp1(1);
@@ -371,9 +371,9 @@ else%%do more accurately, using recurrence relation:
 end
 
 %%FORCING TERMS:
-fm1   =  gam1.^2-nu1;
+fm1   =  gam1.^2-nunu_tilde(1);
 E1    =  [1+0*alp1,-Dr(1)*fm1];
-fm2   =  gam2.^2-nu1;
+fm2   =  gam2.^2-nunu_tilde(2);
 E2    =  [1+0*alp2,-Dr(2)*fm2];
 
 %%SOLVE INTEGRAL EQN:
@@ -456,11 +456,11 @@ if do_test
    disp('R&T, |R|&|T|, |R|^2+s*|T|^2:');
    disp([R,T])
    disp([abs(R),abs(T)])
-   disp( abs(gam1(1)-gam2(1))/(gam1(1)+gam2(1)) )
+   %disp( abs(gam1(1)-gam2(1))/(gam1(1)+gam2(1)) )
    disp(R*R'+s*T*T')
    %%
-   fp1 = gam1.^2+nu1;
-   fp2 = gam2.^2+nu1;
+   fp1 = gam1.^2+nunu_tilde(1);
+   fp2 = gam2.^2+nunu_tilde(2);
    %%
    if bc==1 | hh(1)==0
       disp('check free edge conditions');
