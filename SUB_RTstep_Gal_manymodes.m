@@ -13,6 +13,9 @@ function [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
 %%  INC_SUB = 1 for draught_j = rho_ice*h_j/rho_water; 
 
 do_test  = 0;%%do_test==1 => print |R|&|T|, and check energy
+if nargin==0
+   do_test  = 1;
+end
 
 if ~exist('phys_vars');
    phys_vars   = {10,0,100};
@@ -135,7 +138,7 @@ end
 %% CALC Fm0 & Fmr:
 mvec  = (0:Npolys)';
 alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
-			       %%=1/2 if no submergence.
+                               %%=1/2 if no submergence.
 %%
 kap1     = -1i*gam1*H2;
 kap2     = -1i*gam2*H2;
@@ -172,7 +175,7 @@ MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
 %%FORCING TERMS:
 fm1   = gam1.^2-nunu_tilde(1);
 E1    = [1+0*alp1,-Dr(1)*fm1];
-fm2   = gam2.^2-nu_tilde(2);
+fm2   = gam2.^2-nunu_tilde(2);
 E2    = [1+0*alp2,-Dr(2)*fm2];
 
 %%SOLVE INTEGRAL EQN:
@@ -269,11 +272,16 @@ Smat  = [R1(1) T2(1);T1(1) R2(1)];
 if do_test==1
    Rp = Smat(1,1);
    Tp = Smat(2,1);
-   Rm = Smat(1,2);
-   Tm = Smat(2,2);
+   Rm = Smat(2,2);
+   Tm = Smat(1,2);
+   %%
+   disp('R&T, |R|&|T|, |R|^2+s*|T|^2:');
+   disp([Rp,Tp])
+   disp([abs(Rp),abs(Tp)])
    %%
    s_ia  = y{end};
-   E_tst = abs(Rp^2)+s_ia*abs(Tp^2)
+   disp(Rp*Rp'+s_ia*Tp*Tp')
+   %E_tst = abs(Rp^2)+s_ia*abs(Tp^2)
 
    %%reverse waves:
    Rm2      = -Rp'*Tp/Tp';
