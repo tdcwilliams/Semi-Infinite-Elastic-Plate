@@ -46,6 +46,8 @@ if ~exist('rho_wtr')
    rho_wtr  = prams(3);
 end
 
+SEP_FXN  = 1;%%use separate function for kernel matrix and focing vectors;
+
 %% DO NONDIMENSIONALIZATION:
 Npolys   = NN(1);
 if length(NN)==1
@@ -115,7 +117,7 @@ jinc1 = 1:M1;
 jinc2 = 1:M2;
 jinc  = 1:(M1+M2);
 
-if 0
+if SEP_FXN==0
    %%Coefficients of Green's fxn expansion
    del1  = lam-sigr(1)*mu;
    BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
@@ -194,7 +196,8 @@ if 0
    %%5th output:
    intrinsic_admittance = ( BG1(1)/BG2(1) );
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-else
+
+else%%SEP_FXN==1
    input1   = {gam1,alp1,H1;
                gam2,alp2,H2};
    input2   = {del0,Dr,sigr,nunu_tilde};
