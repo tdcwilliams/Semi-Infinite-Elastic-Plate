@@ -53,7 +53,7 @@ if nargin==0
    do_test  = 1;
 end
 
-SEP_FXN  = 0;%%use separate function for kernel matrix and focing vectors;
+SEP_FXN  = 1;%%use separate function for kernel matrix and focing vectors;
 
 %% tried to improve the number of roots needed
 %% but not working at the moment - so don't recommend this option;
