@@ -53,7 +53,7 @@ if nargin==0
    do_test  = 1;
 end
 
-SEP_FXN  = 0;%%use separate function for kernel matrix and focing vectors;
+SEP_FXN  = 1;%%use separate function for kernel matrix and focing vectors;
 
 %% tried to improve the number of roots needed
 %% but not working at the moment - so don't recommend this option;
@@ -261,7 +261,8 @@ if SEP_FXN==0
 
    %%MAIN KERNEL MATRIX:
    if ~FAST_KERNEL%%basic way:
-      MK  = F2*diag(i*BG2)*F2.'+F1*diag(i*BG1)*F1.';
+      %MK  = F2*diag(i*BG2)*F2.'+F1*diag(i*BG1)*F1.';
+      MK  = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
    elseif 1%%use correction:
       MK     = F2*diag(i*BG2)*F2.'+F1*diag(i*BG1)*F1.';
       nnvec  = (1:Nroots)';
@@ -388,6 +389,7 @@ if SEP_FXN==0
 
    %%forcing from incident wave;
    finc1 = -F1(:,1);
+   %finc1 = 1i*F1(:,1);
 
    %%scattering caused by "forced oscillations" (\bfP_0 & \bfP_1)
    rn_P0 = -2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]] 
@@ -435,14 +437,12 @@ end
 
 %%SOLVE INTEGRAL EQN:
 %uu    = -MK\[1i*F1(:,1),ME1,ME2];
-%uu    = -MK\[-1i*finc1,ME1,ME2];
-%func  = -1i*[-finc1,ME1,ME2];func(1:10,:)
-uu    = -1i*MK\[finc1,ME1,ME2];%uu(1:10,:)
+uu    = MK\[finc1,ME1,ME2];%uu(1:10,:)
 %%
 %rr          = 2*diag(BG1)*F1.'*uu;
-rr          = M_u2r*uu;
+rr          = M_u2r*uu;%rr(1:10,:)
 rr(1)       = rr(1)+1;
-rr(:,2:3)   = rr(:,2:3)+rn_P0;
+rr(:,2:3)   = rr(:,2:3)+rn_P0;%rr(1:10,:)
    %-2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]]
 %%
 %tt          = -2*diag(BG2)*F2.'*uu;
