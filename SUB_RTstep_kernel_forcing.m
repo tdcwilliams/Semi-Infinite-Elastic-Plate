@@ -44,7 +44,6 @@ BG2   = -Lam2.*BGz2;
 %%intrinsic admittance (for energy conservation check);
 intrinsic_admittance = ( BG1(1)/BG2(1) );
 
-
 %% CALC Fm0 & Fmr:
 mvec  = (0:Npolys)';
 alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
