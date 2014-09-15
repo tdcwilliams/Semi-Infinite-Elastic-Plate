@@ -93,8 +93,8 @@ jinc2 = 1:M2;
 jinc  = 1:(M1+M2);
 finc1 = -F1(:,jinc1);
 finc2 = F2(:,jinc2);
-ME2   =  F2*diag(BGz2)*E2;
-ME1   =  F1*diag(BGz1)*E1;
+ME2   = F2*diag(BGz2)*E2;
+ME1   = F1*diag(BGz1)*E1;
 %%
 forcing  = {finc1,ME1;
             finc2,ME2};

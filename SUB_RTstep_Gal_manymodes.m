@@ -115,7 +115,7 @@ jinc1 = 1:M1;
 jinc2 = 1:M2;
 jinc  = 1:(M1+M2);
 
-if 1
+if 0
    %%Coefficients of Green's fxn expansion
    del1  = lam-sigr(1)*mu;
    BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
@@ -229,7 +229,7 @@ else
 end
 
 %%SOLVE INTEGRAL EQN:
-uu    =  MK\[finc1, finc2, ME1, ME2];
+uu =  MK\[finc1, finc2, ME1, ME2];
 %%
 rr                = M_u2r*uu;
 rr(jinc1,jinc1)   = rr(jinc1,jinc1)+eye(M1);
