@@ -14,7 +14,7 @@
 
 
 %opening
-\title{Possible collision model}
+\title{Series convergence}
 \author{Timothy D. Williams}
 
 \begin{document}
@@ -22,7 +22,7 @@
 \maketitle
 
 \begin{abstract}
-Collisions reference: \cite{shen_etal87}
+Reference: \cite{williams-porter2009}
 \end{abstract}
 
 \section{Series}
@@ -57,7 +57,7 @@ J_{2n+\b}(\tilde\K_{j,r})
 &=\sqrt{\frac2{\pi\tilde\K_{j,r} }}
 \cos\left (\tilde\K_{j,r}-(2n+\b)\frac\pi2-\frac\pi4 \right)
 \notag\\
-&=(-1)^{n}r^{-1/2}\sqrt{\frac2{\pi^{2}\hat H_{j} }}
+&=(-1)^{n}r^{-1/2}\sqrt{\frac{2\hat H_{j}}{\pi^{2} }}
 \cos\left(\tilde\K_{j,r}-\b'\right),\\
 %\notag\\
 %&=(-1)^{n}r^{-1/2}\sqrt{\frac1{2\pi^{2}\hat H_{j} }}
@@ -72,7 +72,7 @@ Thus
 F_n^{(j)}(\tilde \g_{j,r})&=
 (-1)^{r}r^{-(2\b+1)/2}f_{j,n}(\b)\cos\left(\tilde\K_{j,r}-\b'\right),\\
 f_{j,n}(\b)&=\Gamma(\b)(2n+\b)\left(\frac\pi{2\hat H_{j}}\right)^{-\b}
-\sqrt{\frac2{\pi^{2}\hat H_{j} }},
+\sqrt{\frac{2\hat H_{j}}{\pi^{2} }},
 \end{align}
 \end{subequations}
 and
@@ -106,7 +106,7 @@ is the polylogarithm function (??). This integral can be done very efficiently w
 \begin{align}\label{Gmn-app}
 \tilde G_{mn}^{(2)}
 &=\frac\rmi{2\pi} f_{2,n}(\b)f_{2,m}(\b)\z(s)
- \left ( 1+\cos(2\rmi\b')\right),
+ \left ( 1+\cos(2\b')\right),
  \notag\\
  &=\frac\rmi{\pi} f_{2,n}(\b)f_{2,m}(\b)\z(s)\cos^{2}(\b')
  \end{align}

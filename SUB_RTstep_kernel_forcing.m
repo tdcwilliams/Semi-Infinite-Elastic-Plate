@@ -69,11 +69,13 @@ F1    = diag(c_left)*besJ1*diag(c_rt1);
 c_rt2 = (2./kap2).^alpC./cos(kap2);
 F2    = diag(c_left)*besJ2*diag(c_rt2);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%MAIN KERNEL MATRIX:
 MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
-if 1
+if 0
    %%try to accelerate convergence of kernel matrix;
    jtest = Nroots-10:Nroots;
+   mtest = 2;
    nnvec = (1:Nroots)';
    alpC
 
@@ -93,12 +95,44 @@ if 1
    crap1 = (2./(nnvec*pi*Hr)).^alpC.*(-1).^nnvec;  %%~c_rt1:  n
    crap2 = (2./(pi*nnvec)).^alpC.*(-1).^nnvec;     %%~c_rt2:  n
 
-   %kap1   = -1i*H2*gam1ap;%%n*pi*H2/H1
-   %besJ1  = besselj(2*mvec'+alpC,kap1).';
-   %c_left = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-   %c_rt1  = (2./kap1).^alpC./cosh(gam1ap*H1);
-   %F1ap   = diag(c_left)*besJ1*diag(c_rt1);
+   %%approx bessel functions:
+   bet1        = pi/2*(alpC+.5);
+   besJ1ap_m   = (-1).^mvec*sqrt(2*Hr/pi^2);
+   besJ1ap_n   = nnvec.^(-.5).*cos(nnvec*pi/Hr-bet1);
+   besJ1ap     = besJ1ap_m*besJ1ap_n.';
+   %tst_besJ1ap = [besJ1ap(mtest,jtest).',besJ1(mtest,jtest+end-Nroots).']
+   %%
+   besJ2ap_m   = (-1).^mvec*sqrt(2/pi^2);
+   besJ2ap_n   = nnvec.^(-.5).*cos(nnvec*pi-bet1);
+   besJ2ap     = besJ2ap_m*besJ2ap_n.';
+   %tst_besJ2ap = [besJ2ap(mtest,jtest).',besJ2(mtest,jtest+end-Nroots).']
+
+   %%approx F1,F2
+   f1m_coeffs  = gamma(alpC)*(alpC+2*mvec)*sqrt(2*Hr/pi^2)*(2*Hr/pi)^alpC;
+   f1n_coeffs  = (-1).^nnvec./nnvec.^(alpC+.5).*cos(nnvec*pi/Hr-bet1);
+   F1ap        = f1m_coeffs*f1n_coeffs.';
+   %tst_F1ap    = [F1ap(mtest,jtest).',F1(mtest,jtest+end-Nroots).']
+   f2m_coeffs  = gamma(alpC)*(alpC+2*mvec)*sqrt(2/pi^2)*(2/pi)^alpC;
+   f2n_coeffs  = (-1).^nnvec./nnvec.^(alpC+.5).*cos(nnvec*pi-bet1);
+   F2ap        = f2m_coeffs*f2n_coeffs.';
+   %tst_F2ap    = [F2ap(mtest,jtest).',F2(mtest,jtest+end-Nroots).']
+
+   MKap_N   = F2ap*diag(BGap)*F2ap.'+F1ap*diag(BGap)*F1ap.';
+   %%
+   if 1
+      ex0   = exp(-2i*bet1);
+      Hr
+      ex1   = exp(2i*pi/Hr)
+      s_MK  = 2*(alpC+1)
+      sfac1 = zeta(s_MK)+real( ex0*SF_polylog(ex1,s_MK) );
+      sfac2 = zeta(s_MK)*( 1+real(ex0) );
+      MKap  = f2m_coeffs*f2m_coeffs.'*sfac2+...
+              f1m_coeffs*f1m_coeffs.'*sfac1; 
+      MK    = MK - MKap_N +MKap;
+   end
+
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%FORCING TERMS:
 fm1   = gam1.^2-nunu_tilde(1);
