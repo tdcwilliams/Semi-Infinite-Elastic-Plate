@@ -1,0 +1,97 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage{srcltx}%%->enable dvi fwd/rev-search
+\usepackage[dvips]{graphicx}
+\usepackage{amsmath}\usepackage{amsfonts}\usepackage{amssymb}
+\usepackage{pstricks}\usepackage{pst-plot}
+\usepackage{psfrag}%%->replace text in eps files with Latex text
+\usepackage{float}%%->set figure placement
+\usepackage{mathrsfs}%%->script font
+\usepackage{natbib}
+
+\include{preamble}
+%
+
+
+%opening
+\title{Possible collision model}
+\author{Timothy D. Williams}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Collisions reference: \cite{shen_etal87}
+\end{abstract}
+
+\section{Series}
+\begin{align}\label{Gmn-def}
+G_{mn}^{(j)}
+ &=\sum_{\a\in S_j}B_j^{(2)}(\a)F_m^{(j)}(\a)F^{(j)}_n(\a).
+\end{align}
+
+\begin{align}
+ F_n^{(j)}(\a)&=\frac2{H_1}\int_{-H}^{-\sig_1}\varf^{(j)}(z,\a)
+ \cC_{2n}\left(\frac{z+H}{H_1}\right)dz\notag\\
+ &=2{\rm sech}(\g H_j)\int_0^1\cos(\K t)\cC_{2n}(t)dt\notag\\
+ &=\frac{(-1)^n\Gamma(\b)}{\cosh(\g
+H_j)}\left(\frac\K2\right)^{-\b}(2n+\b)J_{2n+\b}(\K),
+\end{align}
+where $\K=-\rmi\g H_2$.
+
+Now let $\tilde \g_{j,r}=\rmi n\pi/H_{j}$, and
+$\tilde\K_{j,r}=-\rmi\tilde\g_{j,r}H_{2}=r\pi H_{2}/H_{j}=r\pi /\hat H_{j}$ ($r=1,2,\ldots$). 
+Then
+\begin{subequations}
+\begin{align}
+B_j^{(2)}(\tilde\g_{j,r})&=\frac\rmi{r\pi},\\
+J_{2n+\b}(\tilde\K_{j,r})
+&=\sqrt{\frac2{\pi\tilde\K_{j,r} }}
+\cos\left (\tilde\K_{j,r}-(2n+\b)\frac\pi2-\frac\pi4 \right)
+\notag\\
+&=(-1)^{n}r^{-1/2}\sqrt{\frac2{\pi^{2}\hat H_{j} }}
+\cos\left(\tilde\K_{j,r}-\b'\right),\\
+%\notag\\
+%&=(-1)^{n}r^{-1/2}\sqrt{\frac1{2\pi^{2}\hat H_{j} }}
+%\left(\rme^{\rmi(\tilde\K_{j,r}-\b')}+\rme^{-\rmi(\tilde\K_{j,r}-\b')}\right),\\
+\b'&=\frac\pi2\left (\b+\frac12 \right).
+\end{align}
+\end{subequations}
+
+Thus
+\begin{subequations}
+\begin{align}
+F_n^{(j)}(\tilde \g_{j,r})&=
+(-1)^{r}r^{-(2\b+1)/2}f_{j,n}(\b)\cos\left(\tilde\K_{j,r}-\b'\right),\\
+f_{j,n}(\b)&=\Gamma(\b)(2n+\b)\left(\frac\pi{2\hat H_{j}}\right)^{-\b}
+\sqrt{\frac2{\pi^{2}\hat H_{j} }},
+\end{align}
+\end{subequations}
+and
+\begin{align}\label{Gmn-app}
+\tilde G_{mn}^{(j)}
+ &=\sum_{r=1}^{\infty}B_j^{(2)}(\tilde\g_{j,r})F_m^{(j)}(\tilde\g_{j,r})F^{(j)}_n(\tilde\g_{j,r})
+ \notag\\
+ &=\frac\rmi\pi f_{j,n}(\b)f_{j,m}(\b)\sum_{r=1}^{\infty}r^{-s}
+ \cos^{2}\left(\tilde\K_{j,r}-\b'\right)
+ \notag\\
+ &=\frac\rmi{2\pi} f_{j,n}(\b)f_{j,m}(\b)\sum_{r=1}^{\infty}r^{-s}
+ \left (1+\re\left (\rme^{-2\rmi\b'} \rme^{2\rmi\pi r/\hat H_{j}}\right)\right)
+\notag\\
+ &=\frac\rmi{2\pi} f_{j,n}(\b)f_{j,m}(\b)
+ \left ( \z(s)+\re\left (\rme^{-2\rmi\b'}{\rm Li}_{s} \left(\rme^{2\rmi\pi /\hat H_{j}}\right)\right)\right),
+% \left (1+\re\left (\rme^{-2\rmi\b'} \rme^{2\rmi\pi r/\hat H_{j}}\right)\right)
+ \end{align}
+where $s=2(\b+1)$ and
+\begin{align}
+{\rm Li}_{s}(z)&=\sum_{r=1}^{\infty}\frac{z^{r}}{r^{s}}
+\notag\\
+&=\frac{z}{\G(s)}\int_{0}^{\infty}\frac{t^{s-1}\rme^{-t}}{1-z\rme^{-t}}\rmd t
+\end{align}
+is the polylogarithm function (??). This integral can be done very efficiently with Gauss-Laguerre quadrature. Also note that ${\rm Li}_{s}(1)=\z(s)$.
+
+\bibliographystyle{jfm}
+\bibliography{master}
+
+\end{document}

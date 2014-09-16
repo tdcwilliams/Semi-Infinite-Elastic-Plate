@@ -8,12 +8,13 @@ function [MK,forcing,xtra,intrinsic_admittance]  = SUB_RTstep_kernel_forcing(inp
 
 %input1   = {gam1,alp1,H1;
 %            gam2,alp2,H2};
-gam1  = input1{1,1};
-alp1  = input1{1,2};
-H1    = input1{1,3};
-gam2  = input1{2,1};
-alp2  = input1{2,2};
-H2    = input1{2,3};
+gam1     = input1{1,1};
+alp1     = input1{1,2};
+H1       = input1{1,3};
+gam2     = input1{2,1};
+alp2     = input1{2,2};
+H2       = input1{2,3};
+Nroots   = length(gam2)-3;
 
 %input2   = {del0,Dr,sigr,nunu_tilde};
 lam         = input2{1}(1);
@@ -67,19 +68,37 @@ c_rt1 = (2./kap1).^alpC./cosh(gam1*H1);
 F1    = diag(c_left)*besJ1*diag(c_rt1);
 c_rt2 = (2./kap2).^alpC./cos(kap2);
 F2    = diag(c_left)*besJ2*diag(c_rt2);
-% kap1     = -1i*gam1*H2;
-% besJ1    = besselj(2*mvec'+alpC,kap1).';
-% c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-% c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
-% F1       = diag(c_left)*besJ1*diag(c_rt1);
-% %%
-% kap2  = -1i*gam2*H2;
-% besJ2 = besselj(2*mvec'+alpC,kap2).';
-% c_rt2 = (2./kap2).^alpC./cos(kap2);
-% F2    = diag(c_left)*besJ2*diag(c_rt2);
 
 %%MAIN KERNEL MATRIX:
 MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
+if 1
+   %%try to accelerate convergence of kernel matrix;
+   jtest = Nroots-10:Nroots;
+   nnvec = (1:Nroots)';
+   alpC
+
+   %%approximate roots;
+   gam1ap   = 1i*nnvec*pi/H1;
+   gam2ap   = 1i*nnvec*pi/H2;
+   %tst_gam1 = [gam1ap(jtest),gam1(jtest+end-Nroots)]
+   %tst_gam2 = [gam2ap(jtest),gam2(jtest+end-Nroots)]
+
+   %%approximate BG1,BG2
+   BGap   = 1i/pi./nnvec;
+   %tst_BG = [BGap(jtest),BG1(jtest+end-Nroots),BG2(jtest+end-Nroots)]
+
+   %%approximate c_left,c_rt1,c_rt2
+   Hr    = H1/H2;
+   clap  = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;  %%~c_left: m
+   crap1 = (2./(nnvec*pi*Hr)).^alpC.*(-1).^nnvec;  %%~c_rt1:  n
+   crap2 = (2./(pi*nnvec)).^alpC.*(-1).^nnvec;     %%~c_rt2:  n
+
+   %kap1   = -1i*H2*gam1ap;%%n*pi*H2/H1
+   %besJ1  = besselj(2*mvec'+alpC,kap1).';
+   %c_left = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+   %c_rt1  = (2./kap1).^alpC./cosh(gam1ap*H1);
+   %F1ap   = diag(c_left)*besJ1*diag(c_rt1);
+end
 
 %%FORCING TERMS:
 fm1   = gam1.^2-nunu_tilde(1);

@@ -1,2 +1,7 @@
 *.swp
 tmp/*
+*.aux
+*.log
+*.aux
+*.dvi
+*.synctex.gz
