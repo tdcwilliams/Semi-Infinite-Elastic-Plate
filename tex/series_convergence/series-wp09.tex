@@ -28,8 +28,15 @@ Collisions reference: \cite{shen_etal87}
 \section{Series}
 \begin{align}\label{Gmn-def}
 G_{mn}^{(j)}
- &=\sum_{\a\in S_j}B_j^{(2)}(\a)F_m^{(j)}(\a)F^{(j)}_n(\a).
+ &=\sum_{\a\in \mathscr{S}_j}B_j^{(2)}(\a)F_m^{(j)}(\a)F^{(j)}_n(\a).
 \end{align}
+In practice we truncate this series so there are only $N$ imaginary roots in $\mathscr{S}_{j}$,
+\ie 
+\begin{align}\label{Gmn-N}
+G_{mn}^{(j)}(N)
+ &=\sum_{\a\in \mathscr{S}^{(N)}_j}B_j^{(2)}(\a)F_m^{(j)}(\a)F^{(j)}_n(\a),
+\end{align}
+where $\mathscr{S}^{(N)}_j\subset \mathscr{S}_j$.
 
 \begin{align}
  F_n^{(j)}(\a)&=\frac2{H_1}\int_{-H}^{-\sig_1}\varf^{(j)}(z,\a)
@@ -69,13 +76,19 @@ f_{j,n}(\b)&=\Gamma(\b)(2n+\b)\left(\frac\pi{2\hat H_{j}}\right)^{-\b}
 \end{align}
 \end{subequations}
 and
+\begin{align}\label{Gmn-app0}
+\tilde G_{mn}^{(j)}(N)
+ &=\sum_{r=1}^{N}B_j^{(2)}(\tilde\g_{j,r})F_m^{(j)}(\tilde\g_{j,r})F^{(j)}_n(\tilde\g_{j,r})
+ \notag\\
+ &=\frac\rmi\pi f_{j,n}(\b)f_{j,m}(\b)\sum_{r=1}^{N}r^{-s}
+ \cos^{2}\left(\tilde\K_{j,r}-\b'\right).
+ \end{align}
+where $s=2(\b+1)$.
+Therefore
 \begin{align}\label{Gmn-app}
 \tilde G_{mn}^{(j)}
- &=\sum_{r=1}^{\infty}B_j^{(2)}(\tilde\g_{j,r})F_m^{(j)}(\tilde\g_{j,r})F^{(j)}_n(\tilde\g_{j,r})
- \notag\\
- &=\frac\rmi\pi f_{j,n}(\b)f_{j,m}(\b)\sum_{r=1}^{\infty}r^{-s}
- \cos^{2}\left(\tilde\K_{j,r}-\b'\right)
- \notag\\
+&=\lim_{N\ar\infty}\tilde G_{mn}^{(j)}(N)
+\notag\\
  &=\frac\rmi{2\pi} f_{j,n}(\b)f_{j,m}(\b)\sum_{r=1}^{\infty}r^{-s}
  \left (1+\re\left (\rme^{-2\rmi\b'} \rme^{2\rmi\pi r/\hat H_{j}}\right)\right)
 \notag\\
@@ -83,13 +96,27 @@ and
  \left ( \z(s)+\re\left (\rme^{-2\rmi\b'}{\rm Li}_{s} \left(\rme^{2\rmi\pi /\hat H_{j}}\right)\right)\right),
 % \left (1+\re\left (\rme^{-2\rmi\b'} \rme^{2\rmi\pi r/\hat H_{j}}\right)\right)
  \end{align}
-where $s=2(\b+1)$ and
+ where
 \begin{align}
 {\rm Li}_{s}(z)&=\sum_{r=1}^{\infty}\frac{z^{r}}{r^{s}}
 \notag\\
 &=\frac{z}{\G(s)}\int_{0}^{\infty}\frac{t^{s-1}\rme^{-t}}{1-z\rme^{-t}}\rmd t
 \end{align}
-is the polylogarithm function (??). This integral can be done very efficiently with Gauss-Laguerre quadrature. Also note that ${\rm Li}_{s}(1)=\z(s)$.
+is the polylogarithm function (??). This integral can be done very efficiently with Gauss-Laguerre quadrature. Also note that ${\rm Li}_{s}(1)=\z(s)$, which also implies that for $j=2$, when $\hat H_{2}=1$,
+\begin{align}\label{Gmn-app}
+\tilde G_{mn}^{(2)}
+&=\frac\rmi{2\pi} f_{2,n}(\b)f_{2,m}(\b)\z(s)
+ \left ( 1+\cos(2\rmi\b')\right),
+ \notag\\
+ &=\frac\rmi{\pi} f_{2,n}(\b)f_{2,m}(\b)\z(s)\cos^{2}(\b')
+ \end{align}
+ 
+ Finally we approximate
+ \begin{align}
+G_{mn}^{(j)}\approx G_{mn}^{(j)}(N)-\tilde G_{mn}^{(j)}(N)+ \tilde G_{mn}^{(j)},
+\end{align}
+which gives the summand in the series (\ref{Gmn-app0}) decays like $O(r^{-(s+1)})$.
+This means it can be truncated at a much lower value of $N$.% For example
 
 \bibliographystyle{jfm}
 \bibliography{master}
