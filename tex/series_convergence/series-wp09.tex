@@ -21,11 +21,12 @@
 
 \maketitle
 
-\begin{abstract}
-Reference: \cite{williams-porter2009}
-\end{abstract}
+%\begin{abstract}
+%Reference: \cite{williams-porter2009}
+%\end{abstract}
 
 \section{Series}
+The kernel matrix in \cite{williams-porter2009} is $\rmi=\sqrt{-1}$ multiplied by the following:
 \begin{align}\label{Gmn-def}
 G_{mn}^{(j)}
  &=\sum_{\a\in \mathscr{S}_j}B_j^{(2)}(\a)F_m^{(j)}(\a)F^{(j)}_n(\a).
@@ -99,10 +100,38 @@ Therefore
  where
 \begin{align}
 {\rm Li}_{s}(z)&=\sum_{r=1}^{\infty}\frac{z^{r}}{r^{s}}
-\notag\\
-&=\frac{z}{\G(s)}\int_{0}^{\infty}\frac{t^{s-1}\rme^{-t}}{1-z\rme^{-t}}\rmd t
+\quad\text{for }|z|\leq1
 \end{align}
-is the polylogarithm function (??). This integral can be done very efficiently with Gauss-Laguerre quadrature. Also note that ${\rm Li}_{s}(1)=\z(s)$, which also implies that for $j=2$, when $\hat H_{2}=1$,
+($|z|<=1$) is the polylogarithm function \citep{wood1992-polylog-techrep}. Note that ${\rm Li}_{s}(1)=\z(s)$.
+
+It has the Bose-Einstein integral representation
+\begin{align}
+{\rm Li}_{s}(z)
+&=\frac{z}{\G(s)}\int_{0}^{\infty}\frac{t^{s-1}\rme^{-t}}{1-z\rme^{-t}}\rmd t
+\quad\text{for }z\in\Cfield\backslash[1,\infty),
+\end{align}
+where ${\rm Li}_{s}$ has a branch cut. It converges reasonably well unless $z$ gets too close to this branch cut. By taking the Mellin transform of this, \cite{wood1992-polylog-techrep} derives the expansion in $w=\log z$ which works extremely well near $z=1$ ($|w|\leq 2\pi$):
+\begin{align}
+{\rm Li}_{s}(\rme^{w})
+&=\sum_{k=0}^{\infty}\z(s-k)\frac{w^{k}}{k!}+\G(1-s)(-w)^{s-1}
+\quad\text{($s\neq1,2,\ldots$)},
+\end{align}
+or 
+\begin{align}
+{\rm Li}_{s}(\rme^{w})
+&=\sum_{k=0,\,k\neq s-1}^{\infty}\z(s-k)\frac{w^{k}}{k!}+
+f_{s}(w)\frac{w^{s-1}}{(s-1)!}
+\quad\text{($s=1,2,\ldots$)}
+\end{align}
+where
+\[f_{s}(w)=\sum_{k=1}^{s-1}\frac1k-\log(-w).\]
+Near $z=1$ ($|w|=|\log(-z)|<\pi$), the alternative series works well:
+\begin{align}
+{\rm Li}_{s}(\rme^{-w})
+&=-\sum_{k=0,\,k\neq s-1}^{\infty}\eta(s-k)\frac{w^{k}}{k!},
+\end{align}
+where $\eta(s)=(1-2^{1-s})\z(s).$
+This integral can be done very efficiently with Gauss-Laguerre quadrature. Also, ${\rm Li}_{s}(1)=\z(s)$, which implies that for $j=2$, when $\hat H_{2}=1$,
 \begin{align}\label{Gmn-app}
 \tilde G_{mn}^{(2)}
 &=\frac\rmi{2\pi} f_{2,n}(\b)f_{2,m}(\b)\z(s)

@@ -1,9 +1,13 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{2}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[Williams \& Porter(2009)]{williams-porter2009}
 {\sc Williams, T.~D. \& Porter, R.} 2009 The effect of submergence on the
   scattering by the interface between two semi-infinite sheets. {\em Journal of
   Fluids and Structures\/} {\bf 25}, 777--793.
+
+\bibitem[Wood(1992)]{wood1992-polylog-techrep}
+{\sc Wood, D.} 1992 The computation of polylogarithms. {\em Tech. Rep.\/}
+  {15-92$^*$}. University of Kent.
 
 \end{thebibliography}
