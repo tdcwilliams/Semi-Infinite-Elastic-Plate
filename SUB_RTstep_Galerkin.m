@@ -1,6 +1,6 @@
 function [R,T,y] = SUB_RTstep_Galerkin(...
-			phys_vars,hh,bc,NN,INC_SUB,youngs,rho_wtr,do_test,Mlog)
-%% calc's scattering coeffiecients for an ice step
+			phys_vars,hh,bc,NN,INC_SUB,EE,rho_wtr)%,do_test,Mlog)
+%% calc's scattering coefficients for an ice step
 %% CALL: [R,T,y]=...
 %%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
 %% INPUTS: N is no of imag roots to use;
