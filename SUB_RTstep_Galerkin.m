@@ -8,9 +8,16 @@ function [R,T,y] = SUB_RTstep_Galerkin(...
 %%     or (cell) {T,theta_inc,H_dim}.
 %%   where H_dim is distance from sea floor
 %%     to bottom of thickest ice sheet;
-%%   NN=vector[Nterms,Nroots]
+%%   hh  = [h1,h2] are ice thicknesses for LHS & RHS
+%%   bc  = 0: frozen edge conditions; 1: free edges
+%%   NN  = vector[Nterms,Nroots]
 %%     -> no of polys to use for P' in Galerkin expansion
 %%     & no of roots to use
+%%   INC_SUB: use submergence or not
+%%   EE = [E1,E2;rho1,rho2;nu1,nu2],
+%%    where E*, rho*, nu* are ice Young's modulus, density and Poisson's ratio (1: LHS,2: RHS);
+%%    or E (same Young's modulus on both sides) (& default values for YM and rho)
+%%   rho_wtr  = water density
 %% OUTPUTS: R&T are reflection and transmission coefficients;
 %%   y=...
 
