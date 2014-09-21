@@ -1,10 +1,13 @@
 %% SUB_RTstep_kernel_forcing.m
 %% Author: Timothy Williams
 %% Date: 20140915, 10:42:15 CEST
-function [MK,forcing,xtra,intrinsic_admittance]  = SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB)
+function [MK,forcing,xtra,intrinsic_admittance]  =...
+   SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB,CORRECT_KERNEL)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Sort out inputs;
+
+%CORRECT_KERNEL = 0;%%use polylogarithm/zeta function correction to kernel matrix
 
 %input1   = {gam1,alp1,H1;
 %            gam2,alp2,H2};
@@ -72,12 +75,12 @@ F2    = diag(c_left)*besJ2*diag(c_rt2);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%MAIN KERNEL MATRIX:
 MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
-if 0
+if CORRECT_KERNEL
    %%try to accelerate convergence of kernel matrix;
    jtest = Nroots-10:Nroots;
    mtest = 2;
    nnvec = (1:Nroots)';
-   alpC
+   %alpC
 
    %%approximate roots;
    gam1ap   = 1i*nnvec*pi/H1;
@@ -121,9 +124,9 @@ if 0
    %%
    if 1
       ex0   = exp(-2i*bet1);
-      Hr
-      ex1   = exp(2i*pi/Hr)
-      s_MK  = 2*(alpC+1)
+      %Hr
+      ex1   = exp(2i*pi/Hr);
+      s_MK  = 2*(alpC+1);
       sfac1 = zeta(s_MK)+real( ex0*SF_polylog(ex1,s_MK) );
       sfac2 = zeta(s_MK)*( 1+real(ex0) );
       MKap  = f2m_coeffs*f2m_coeffs.'*sfac2+...

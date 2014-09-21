@@ -1,8 +1,8 @@
 function [R,T,y] = SUB_RTstep_Galerkin(...
-			phys_vars,hh,bc,NN,INC_SUB,EE,rho_wtr)%,do_test,Mlog)
+			phys_vars,hh,bc,NN,INC_SUB,EE,rho_wtr,DO_KC)
 %% calc's scattering coefficients for an ice step
 %% CALL: [R,T,y]=...
-%%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
+%%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB,DO_KC)
 %% INPUTS: N is no of imag roots to use;
 %%   phys_vars=(vector) T or [T, theta_inc=angle of incidence];
 %%     or (cell) {T,theta_inc,H_dim}.
@@ -18,6 +18,7 @@ function [R,T,y] = SUB_RTstep_Galerkin(...
 %%    where E*, rho*, nu* are ice Young's modulus, density and Poisson's ratio (1: LHS,2: RHS);
 %%    or E (same Young's modulus on both sides) (& default values for YM and rho)
 %%   rho_wtr  = water density
+%%   DO_KC = 1: do kernel correction; 0: don't
 %% OUTPUTS: R&T are reflection and transmission coefficients;
 %%   y=...
 
@@ -38,7 +39,11 @@ if ~exist('bc')
    %bc = 0;%% frozen edge conditions;
 end
 if ~exist('NN')
-   NN = [50 1000];%% [N_poly, N_roots];
+   %NN = [50 1000];%% [N_poly, N_roots];
+   %NN = [50 500];%% [N_poly, N_roots];
+   %NN = [50 2000];%% [N_poly, N_roots];
+   %NN = [50 250];%% [N_poly, N_roots];
+   NN = [50 5000];%% [N_poly, N_roots];
 end
 if ~exist('INC_SUB')
    INC_SUB = 1;%% include submergence or not;
@@ -48,9 +53,18 @@ if ~exist('EE')
    EE = [prams(1),prams(1);
          prams(4),prams(4);
          prams(5),prams(5)];
+else
+   if prod(size(EE))==1
+      EE = [EE,EE;
+            prams(4),prams(4);
+            prams(5),prams(5)];
+   end
 end
 if ~exist('rho_wtr')
    rho_wtr  = prams(3);
+end
+if ~exist('DO_KC')
+   DO_KC = 1;
 end
 
 do_test  = 0;
@@ -422,7 +436,7 @@ else%%SEP_FXN==1
    NMM      = [Nterms,1,0];
    %%
    [MK,forcing,xtra,intrinsic_admittance] =...
-      SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB);
+      SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
    %forcing  = {finc1,ME1;
    %            finc2,ME2};
@@ -444,7 +458,8 @@ end
 
 %%SOLVE INTEGRAL EQN:
 %uu    = -MK\[1i*F1(:,1),ME1,ME2];
-uu    = MK\[finc1,ME1,ME2];%uu(1:10,:)
+uu = MK\[finc1,ME1,ME2];%uu(1:10,:)
+y  = {Z_out,[],[],intrinsic_admittance,uu};
 %%
 %rr          = 2*diag(BG1)*F1.'*uu;
 rr          = M_u2r*uu;%rr(1:10,:)
@@ -507,8 +522,8 @@ end
 R  = rn(1);
 T  = tn(1);
 %s  = ( BG1(1)/BG2(1) );%intrinsic admittance
-s  = intrinsic_admittance;
-y  = {Z_out,rn,tn,s};
+s        = intrinsic_admittance;
+y(2:3)   = {rn,tn};
 
 if DO_SWAP
    R   = -R'*T/T';
