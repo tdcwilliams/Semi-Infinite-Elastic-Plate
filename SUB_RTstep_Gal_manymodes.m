@@ -1,5 +1,5 @@
 function [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
-			phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr)
+			phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr,DO_KC)
 %% CALL: [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
 %%			phys_vars,hh,bc,MM,NN,INC_SUB)
 %% phys_vars = period or [period,theta_inc] or {period,theta_inc,H},
@@ -45,9 +45,11 @@ end
 if ~exist('rho_wtr')
    rho_wtr  = prams(3);
 end
+if ~exist('DO_KC')
+   DO_KC = 1;
+end
 
-SEP_FXN  = 1;%%use separate function for kernel matrix and focing vectors;
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% DO NONDIMENSIONALIZATION:
 Npolys   = NN(1);
 if length(NN)==1
@@ -71,8 +73,10 @@ else
   [Rts,rts,H,alpy,del0,L]  = NDmakeZ2_rel(phys_vars,hh,Ninput);
   HH                       = [H H];
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%want ice that is submerged more deeply on the right:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% WANT ICE THAT IS SUBMERGED MORE DEEPLY ON THE RIGHT:
 sigsig   = EE(2,:).*hh/rho_wtr;
 DO_SWAP  = ( sigsig(1)>sigsig(2) );
 if DO_SWAP
@@ -84,6 +88,7 @@ if DO_SWAP
   HH     = HH([2 1]);
   MM     = fliplr(MM);
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 hr    = hh/hh(2);
 Er    = EE(1,:)/EE(1,2);
@@ -117,112 +122,33 @@ jinc1 = 1:M1;
 jinc2 = 1:M2;
 jinc  = 1:(M1+M2);
 
-if SEP_FXN==0
-   %%Coefficients of Green's fxn expansion
-   del1  = lam-sigr(1)*mu;
-   BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
-   Lam1  = Dr(1)*gam1.^4+del1;
-   BGz1  = -Lam1.*BGzz1;
-   BG1   = -Lam1.*BGz1;
-   %%
-   del2  = lam-sigr(2)*mu;
-   BGzz2 = calc_res({Dr(2),del2,H2},gam2).*gam2./alp2;
-   Lam2  = Dr(2)*gam2.^4+del2;
-   BGz2  = -Lam2.*BGzz2;
-   BG2   = -Lam2.*BGz2;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GET KERNEL MATRIX AND FORCING TERMS
+input1   = {gam1,alp1,H1;
+            gam2,alp2,H2};
+input2   = {del0,Dr,sigr,nunu_tilde};
+NMM      = [Npolys,M1,M2];
+%%
+[MK,forcing,xtra,intrinsic_admittance] =...
+   SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
-   %% CALC Fm0 & Fmr:
-   mvec  = (0:Npolys)';
-   alpC  = .5-1/3*INC_SUB*(sigr(1)~=1);%%=1/6 if submergence included;
-                                  %%=1/2 if no submergence.
-   %%
-   kap1     = -1i*gam1*H2;
-   kap2     = -1i*gam2*H2;
-   c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
+%forcing  = {finc1,ME1;
+%            finc2,ME2};
+finc1 = forcing{1,1};
+ME1   = forcing{1,2};
+finc2 = forcing{2,1};
+ME2   = forcing{2,2};
 
-   if 0%%older version of besselj
-      besJ1    = besselj(2*mvec'+alpC,kap1).';
-      besJ2 = besselj(2*mvec'+alpC,kap2).';
-   else
-      [NU1,Z1] = meshgrid(2*mvec'+alpC, kap1);
-      besJ1    = besselj(NU1,Z1).';
-      [NU1,Z1] = meshgrid(2*mvec'+alpC, kap2);
-      besJ2    = besselj(NU1,Z1).';
-   end
-
-   c_rt1 = (2./kap1).^alpC./cosh(gam1*H1);
-   F1    = diag(c_left)*besJ1*diag(c_rt1);
-   c_rt2 = (2./kap2).^alpC./cos(kap2);
-   F2    = diag(c_left)*besJ2*diag(c_rt2);
-   % kap1     = -1i*gam1*H2;
-   % besJ1    = besselj(2*mvec'+alpC,kap1).';
-   % c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-   % c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
-   % F1       = diag(c_left)*besJ1*diag(c_rt1);
-   % %%
-   % kap2  = -1i*gam2*H2;
-   % besJ2 = besselj(2*mvec'+alpC,kap2).';
-   % c_rt2 = (2./kap2).^alpC./cos(kap2);
-   % F2    = diag(c_left)*besJ2*diag(c_rt2);
-
-   %%MAIN KERNEL MATRIX:
-   MK = F2*diag(BG2)*F2.'+F1*diag(BG1)*F1.';
-
-   %%FORCING TERMS:
-   fm1   = gam1.^2-nunu_tilde(1);
-   E1    = [1+0*alp1,-Dr(1)*fm1];
-   fm2   = gam2.^2-nunu_tilde(2);
-   E2    = [1+0*alp2,-Dr(2)*fm2];
-
-   %%
-   finc1 = -F1(:,jinc1);
-   finc2 = F2(:,jinc2);
-   ME2   =  F2*diag(BGz2)*E2;
-   ME1   =  F1*diag(BGz1)*E1;
-
-   %%scattering caused by "forced oscillations" (\bfP_0 & \bfP_1)
-   rn_P0 = -2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]] 
-   tn_P1 = +2*diag(BGz2)*E2;%tstr=[rn,rr*[1;P1]] 
-
-   %%matrices to map uu to rn & tn coefficients
-   M_u2r = 2*diag(BG1)*F1.';
-   M_u2t = -2*diag(BG2)*F2.';
-
-   %%matrices to apply the edge conditions;
-   M_PM1 = E1.'*diag(-1./Lam1);
-   M_PM2 = E2.'*diag(-1./Lam2);
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %%5th output:
-   intrinsic_admittance = ( BG1(1)/BG2(1) );
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-else%%SEP_FXN==1
-   input1   = {gam1,alp1,H1;
-               gam2,alp2,H2};
-   input2   = {del0,Dr,sigr,nunu_tilde};
-   NMM      = [Npolys,M1,M2];
-   %%
-   [MK,forcing,xtra,intrinsic_admittance] =...
-      SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB);
-
-   %forcing  = {finc1,ME1;
-   %            finc2,ME2};
-   finc1 = forcing{1,1};
-   ME1   = forcing{1,2};
-   finc2 = forcing{2,1};
-   ME2   = forcing{2,2};
-
-   %xtra  = {rn_P0,tn_P1;
-   %         M_PM1,M_PM2;
-   %         M_u2r,M_u2t};
-   rn_P0 = xtra{1,1};
-   tn_P1 = xtra{1,2};
-   M_PM1 = xtra{2,1};
-   M_PM2 = xtra{2,2};
-   M_u2r = xtra{3,1};
-   M_u2t = xtra{3,2};
-end
+%xtra  = {rn_P0,tn_P1;
+%         M_PM1,M_PM2;
+%         M_u2r,M_u2t};
+rn_P0 = xtra{1,1};
+tn_P1 = xtra{1,2};
+M_PM1 = xtra{2,1};
+M_PM2 = xtra{2,2};
+M_u2r = xtra{3,1};
+M_u2t = xtra{3,2};
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if DO_SWAP
    intrinsic_admittance = 1/intrinsic_admittance;
@@ -237,12 +163,10 @@ uu =  MK\[finc1, finc2, ME1, ME2];
 rr                = M_u2r*uu;
 rr(jinc1,jinc1)   = rr(jinc1,jinc1)+eye(M1);
 rr(:,M1+M2+(1:2)) = rr(:,M1+M2+(1:2))+rn_P0;%-...
-			%2*diag(BGz1)*E1;%tstr=[rn,rr*[1;P1]]
 %%
 tt                   = M_u2t*uu;
 tt(jinc2,M1+jinc2)   = tt(jinc2,M1+jinc2)+eye(M2);%Min1+Min2+(3:4)
 tt(:,M1+M2+(3:4))    = tt(:,M1+M2+(3:4))+tn_P1;%...
-			%2*diag(BGz2)*E2;%tstt=[tn tt*[1;P1]]
 %%
 
 %%APPLY EDGE CONDITIONS:
@@ -278,10 +202,6 @@ else%%frozen edges:
   tt(:,j_mat)  = tt(:,j_mat)+tt(:,j_dis);
   rr(:,j_dis)  = [];
   tt(:,j_dis)  = [];
-%    rr(:,2:3)=rr(:,2:3)+rr(:,4:5);
-%    rr(:,4:5)=[];
-%    tt(:,2:3)=tt(:,2:3)+tt(:,4:5);
-%    tt(:,4:5)=[];
   %%
   PM1             = M_PM1*rr;
   PM1(:,jinc1)    = PM1(:,jinc1)+M_PM1(:,jinc1);
@@ -333,17 +253,3 @@ if do_test==1
    rev_test = [Rm ,Tm ;
                Rm2,Tm2]
 end
-
-function y=calc_res(Z2,gamma)
-%% y=calc_res(Z2,hr,gamma)=Res(1/f(K),gamma_n),
-%% where gamma_n is a root of the dispersion relation
-%% f=1/K/tanh(KH)-(Dr*K^4+del);
-%% Z2={Dr,lam-mr*mu,H}.
-Dr    = Z2{1};
-del   = Z2{2};
-H     = Z2{3};
-%%
-Gam   = Dr*gamma.^4+del;%%now include mr in mu
-Gampr = Gam+4*Dr*gamma.^4;
-denom = H*(Gam.^2.*gamma.^2-1)+Gampr;
-y     = -gamma./denom;

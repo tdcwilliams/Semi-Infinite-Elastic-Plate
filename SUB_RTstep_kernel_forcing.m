@@ -32,6 +32,7 @@ M1       = NMM(2);
 M2       = NMM(3);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Coefficients of Green's fxn expansions
 del1  = lam-sigr(1)*mu;
 BGzz1 = calc_res({Dr(1),del1,H1},gam1).*gam1./alp1;
@@ -47,6 +48,7 @@ BG2   = -Lam2.*BGz2;
 
 %%intrinsic admittance (for energy conservation check);
 intrinsic_admittance = ( BG1(1)/BG2(1) );
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% CALC Fm0 & Fmr:
 mvec  = (0:Npolys)';
@@ -58,7 +60,7 @@ kap2     = -1i*gam2*H2;
 c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
 
 if 0%%older version of besselj
-   besJ1    = besselj(2*mvec'+alpC,kap1).';
+   besJ1 = besselj(2*mvec'+alpC,kap1).';
    besJ2 = besselj(2*mvec'+alpC,kap2).';
 else
    [NU1,Z1] = meshgrid(2*mvec'+alpC, kap1);
@@ -80,7 +82,6 @@ if CORRECT_KERNEL
    jtest = Nroots-10:Nroots;
    mtest = 2;
    nnvec = (1:Nroots)';
-   %alpC
 
    %%approximate roots;
    gam1ap   = 1i*nnvec*pi/H1;
@@ -122,18 +123,14 @@ if CORRECT_KERNEL
 
    MKap_N   = F2ap*diag(BGap)*F2ap.'+F1ap*diag(BGap)*F1ap.';
    %%
-   if 1
-      ex0   = exp(-2i*bet1);
-      %Hr
-      ex1   = exp(2i*pi/Hr);
-      s_MK  = 2*(alpC+1);
-      sfac1 = zeta(s_MK)+real( ex0*SF_polylog(ex1,s_MK) );
-      sfac2 = zeta(s_MK)*( 1+real(ex0) );
-      MKap  = f2m_coeffs*f2m_coeffs.'*sfac2+...
-              f1m_coeffs*f1m_coeffs.'*sfac1; 
-      MK    = MK - MKap_N +MKap;
-   end
-
+   ex0   = exp(-2i*bet1);
+   ex1   = exp(2i*pi/Hr);
+   s_MK  = 2*(alpC+1);
+   sfac1 = zeta(s_MK)+real( ex0*SF_polylog(ex1,s_MK) );
+   sfac2 = zeta(s_MK)*( 1+real(ex0) );
+   MKap  = f2m_coeffs*f2m_coeffs.'*sfac2+...
+           f1m_coeffs*f1m_coeffs.'*sfac1; 
+   MK    = MK - MKap_N +MKap;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -170,7 +167,9 @@ xtra  = {rn_P0,tn_P1;
          M_PM1,M_PM2;
          M_u2r,M_u2t};
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function y=calc_res(Z2,gamma)
+%% Calculate residue
 %% y=calc_res(Z2,hr,gamma)=Res(1/f(K),gamma_n),
 %% where gamma_n is a root of the dispersion relation
 %% f=1/K/tanh(KH)-(Dr*K^4+del);
