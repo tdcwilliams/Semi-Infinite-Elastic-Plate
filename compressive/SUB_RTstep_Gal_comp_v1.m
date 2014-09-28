@@ -3,7 +3,7 @@ function [R,T,y] = SUB_RTstep_Galerkin_corrected_v1(...
 
 %% Notation closer to Williams (2014);
 %%
-%% calc's scattering coeffiecients for an ice step
+%% calc's scattering coefficients for an ice step
 %% CALL: [R,T,y]=...
 %%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
 %% INPUTS: N is no of imag roots to use;

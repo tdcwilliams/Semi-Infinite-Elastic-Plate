@@ -1,4 +1,4 @@
-function [R,T,y] = SUB_RTstep_Galerkin(...
+function [R,T,y] = SUB_RTstep_Gal(...
 			phys_vars,hh,bc,NN,INC_SUB,EE,rho_wtr,DO_KC)
 %% calc's scattering coefficients for an ice step
 %% CALL: [R,T,y]=...
@@ -162,7 +162,7 @@ input2   = {del0,Dr,sigr,nunu_tilde};
 NMM      = [Nterms,1,0];
 %%
 [MK,forcing,xtra,intrinsic_admittance] =...
-   SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
+   SUB_step_GAL_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
 %forcing  = {finc1,ME1;
 %            finc2,ME2};

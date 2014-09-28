@@ -1,7 +1,7 @@
-function [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
+function [R1,T1,R2,T2,Smat,y]=SUB_TMstep_Gal(...
 			phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr,DO_KC)
-%% CALL: [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
-%%			phys_vars,hh,bc,MM,NN,INC_SUB)
+%% CALL: [R1,T1,R2,T2,Smat,y]=SUB_TMstep_Gal(...
+%%			phys_vars,hh,bc,MM,NN,INC_SUB,EE,rho_wtr,DO_KC)
 %% phys_vars = period or [period,theta_inc] or {period,theta_inc,H},
 %%  where theta_inc is angle of incidence and z=-H is the sea floor
 %%  (theta_inc=0, H=oo by default if they aren't entered);
@@ -9,12 +9,30 @@ function [R1,T1,R2,T2,Smat,y]=SUB_RTstep_Gal_manymodes(...
 %% bc = 0 for frozen edges, bc = 1 for free edges;
 %% MM = [M_left,M_right];
 %% NN = [N_gegenbauers,N_eigenfxns];
+%%
 %% INC_SUB = 0 for draught = 0,
-%%  INC_SUB = 1 for draught_j = rho_ice*h_j/rho_water; 
+%%       or  1 for draught_j = rho_ice*h_j/rho_water; 
+%%
+%% EE = Young's modulus for ice if want to change from default
+%%   or [YM_left,YM_right      - Young's moduli
+%%       ID_left,ID_right      - ice densities
+%%       PR_left,PR_right]     - Poisson's ratios
+%% rho_wtr = water density
+%% DO_KC = 1: try to improve convergence of kernel matrix
+%%      or 0: leave as it was
 
 do_test  = 0;%%do_test==1 => print |R|&|T|, and check energy
 if nargin==0
    do_test  = 1;
+   if 0
+      hh = [0,1];
+   elseif 0
+      hh = [1,2];
+      bc = 1;
+   elseif 1
+      hh = [1,2];
+      bc = 0;
+   end
 end
 
 if ~exist('phys_vars');
@@ -117,10 +135,19 @@ H     = H2+sig2;
 gam0  = gam1(1);
 alp0  = alp1(1);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%book-keeping
-jinc1 = 1:M1;
-jinc2 = 1:M2;
-jinc  = 1:(M1+M2);
+%%rows:
+jr_inc1 = 1:M1;
+jr_inc2 = 1:M2;
+
+%%columns:
+jc_inc1  = 1:M1;
+jc_inc2  = M1+jr_inc2;
+jinc     = 1:(M1+M2);
+jc_P1    = M1+M2+(1:2);
+jc_P2    = M1+M2+(3:4);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GET KERNEL MATRIX AND FORCING TERMS
@@ -130,7 +157,7 @@ input2   = {del0,Dr,sigr,nunu_tilde};
 NMM      = [Npolys,M1,M2];
 %%
 [MK,forcing,xtra,intrinsic_admittance] =...
-   SUB_RTstep_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
+   SUB_step_GAL_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
 %forcing  = {finc1,ME1;
 %            finc2,ME2};
@@ -139,13 +166,13 @@ ME1   = forcing{1,2};
 finc2 = forcing{2,1};
 ME2   = forcing{2,2};
 
-%xtra  = {rn_P0,tn_P1;
+%xtra  = {rn_P1,tn_P2;
 %         M_PM1,M_PM2;
 %         M_u2r,M_u2t};
-rn_P0 = xtra{1,1};
-tn_P1 = xtra{1,2};
-M_PM1 = xtra{2,1};
-M_PM2 = xtra{2,2};
+rn_P1 = xtra{1,1};
+tn_P2 = xtra{1,2};
+M_PM1 = xtra{2,1}.';
+M_PM2 = xtra{2,2}.';
 M_u2r = xtra{3,1};
 M_u2t = xtra{3,2};
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -160,67 +187,67 @@ end
 %%SOLVE INTEGRAL EQN:
 uu =  MK\[finc1, finc2, ME1, ME2];
 %%
-rr                = M_u2r*uu;
-rr(jinc1,jinc1)   = rr(jinc1,jinc1)+eye(M1);
-rr(:,M1+M2+(1:2)) = rr(:,M1+M2+(1:2))+rn_P0;%-...
+rr                   = M_u2r*uu;
+rr(jr_inc1,jc_inc1)  = rr(jr_inc1,jc_inc1)+eye(M1);
+rr(:,jc_P1)          = rr(:,jc_P1)+rn_P1;%-...
 %%
 tt                   = M_u2t*uu;
-tt(jinc2,M1+jinc2)   = tt(jinc2,M1+jinc2)+eye(M2);%Min1+Min2+(3:4)
-tt(:,M1+M2+(3:4))    = tt(:,M1+M2+(3:4))+tn_P1;%...
+tt(jr_inc2,jc_inc2)  = tt(jr_inc2,jc_inc2)+eye(M2);%Min1+Min2+(3:4)
+tt(:,jc_P2)          = tt(:,jc_P2)+tn_P2;%...
 %%
 
 %%APPLY EDGE CONDITIONS:
 if Dr(1)==0%%water on left:
-  j_dis        = M1+M2+(1:3);
-  j_mat        = M1+M2+1;
+  j_dis        = M1+M2+(1:3); %%remove these columns (w',S on left go; S=0 on right)
+  j_unk        = M1+M2+1;     %%unknown constant (w' RHS) corresponds to this column
   rr(:,j_dis)  = [];
   tt(:,j_dis)  = [];
   %%
-  Mom2               = M_PM2(2,:)*tt;
-  Mom2(1,M1+jinc2)   = Mom2(1,M1+jinc2) + M_PM2(2,jinc2);
-  Q2                 = -Mom2(j_mat)\Mom2(jinc);%M2(1)/M2(2);
+  Mom2            = M_PM2(:,2).'*tt;
+  Mom2(1,jc_inc2) = Mom2(1,jc_inc2) + M_PM2(jr_inc2,2).';%%add bending moment from RHS incident waves
+  Q2              = -Mom2(:,j_unk)\Mom2(:,jinc);
   %%
-  rn  = rr(:,jinc)+rr(:,j_mat)*Q2;
-  tn  = tt(:,jinc)+tt(:,j_mat)*Q2;
+  rn  = rr(:,jinc)+rr(:,j_unk)*Q2;
+  tn  = tt(:,jinc)+tt(:,j_unk)*Q2;
 elseif bc==1%%free edges:
-  j_dis        = M1+M2+[1 3];
-  j_mat        = M1+M2+(1:2);
+  j_dis        = M1+M2+[1 3]; %%remove these columns (S=0 on left and right)
+  j_unk        = M1+M2+(1:2); %%unknown constants (w' on left and right) correspond to this column
   rr(:,j_dis)  = [];
   tt(:,j_dis)  = [];
   %%
-  MM              = [M_PM1(2,:)*rr; M_PM2(2,:)*tt];
-  MM(1,jinc1)     = MM(1,jinc1)+M_PM1(2,jinc1);
-  MM(2,M1+jinc2)  = MM(2,M1+jinc2)+M_PM2(2,jinc2);
+  MM              = [M_PM1(:,2).'*rr; M_PM2(:,2).'*tt];
+  MM(1,jc_inc1)   = MM(1,jc_inc1)+M_PM1(jr_inc1,2).'; %%add bending moment from LHS incident waves
+  MM(2,jc_inc2)   = MM(2,jc_inc2)+M_PM2(jr_inc2,2).'; %%add bending moment from RHS incident waves
   %%
-  QQ  = -MM(:,j_mat)\MM(:,jinc);
-  rn  = rr(:,jinc)+rr(:,j_mat)*QQ;
-  tn  = tt(:,jinc)+tt(:,j_mat)*QQ;
+  QQ  = -MM(:,j_unk)\MM(:,jinc);
+  rn  = rr(:,jinc)+rr(:,j_unk)*QQ;
+  tn  = tt(:,jinc)+tt(:,j_unk)*QQ;
 else%%frozen edges:
-  j_dis        = M1+M2+(3:4);
-  j_mat        = M1+M2+(1:2);
-  rr(:,j_mat)  = rr(:,j_mat)+rr(:,j_dis);
-  tt(:,j_mat)  = tt(:,j_mat)+tt(:,j_dis);
-  rr(:,j_dis)  = [];
-  tt(:,j_dis)  = [];
+  j_dis        = M1+M2+(3:4); %%cts edges: w',S are the same on LHS and RHS so add forcings together
+  j_unk        = M1+M2+(1:2); %%unknown constants (w',S on left) correspond to this column
+  rr(:,j_unk)  = rr(:,j_unk)+rr(:,j_dis); %%add RHS to LHS
+  tt(:,j_unk)  = tt(:,j_unk)+tt(:,j_dis); %%add RHS to LHS
+  rr(:,j_dis)  = [];                      %%remove RHS
+  tt(:,j_dis)  = [];                      %%remove RHS
   %%
-  PM1             = M_PM1*rr;
-  PM1(:,jinc1)    = PM1(:,jinc1)+M_PM1(:,jinc1);
-  PM2             = M_PM2*tt;
-  PM2(:,M1+jinc2) = PM2(:,M1+jinc2)+M_PM2(:,jinc2);
+  PM1             = M_PM1.'*rr;
+  PM1(:,jc_inc1)  = PM1(:,jc_inc1)+M_PM1(jr_inc1,:).';%%add w,M from inc wave on LHS
+  PM2             = M_PM2.'*tt;
+  PM2(:,jc_inc2)  = PM2(:,jc_inc2)+M_PM2(jr_inc2,:).';%%add w,M from inc wave on RHS
   dPM             = PM2-PM1;
   %%
-  Q1  = -dPM(:,j_mat)\dPM(:,jinc);
-  rn  = rr(:,jinc)+rr(:,j_mat)*Q1;
-  tn  = tt(:,jinc)+tt(:,j_mat)*Q1;
+  Q1  = -dPM(:,j_unk)\dPM(:,jinc);
+  rn  = rr(:,jinc)+rr(:,j_unk)*Q1;
+  tn  = tt(:,jinc)+tt(:,j_unk)*Q1;
 end
 
 %%REFLECTION AND TRANSMISSION COEFFICIENTS:
 jout1 = 1:M1;
 jout2 = 1:M2;
-R1    = rn(jout1,jinc1);
-T1    = tn(jout2,jinc1);
-R2    = tn(jout2,M1+jinc2);
-T2    = rn(jout1,M1+jinc2);
+R1    = rn(jr_inc1,jc_inc1);
+T1    = tn(jr_inc2,jc_inc1);
+R2    = tn(jr_inc2,jc_inc2);
+T2    = rn(jr_inc1,jc_inc2);
 
 if DO_SWAP
   tmp = R2;
