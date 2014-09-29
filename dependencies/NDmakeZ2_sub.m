@@ -57,6 +57,13 @@ elseif prod(size(EE))==1
    rho_ice  = pram(4);
    nu       = pram(5);
    EE       = [E,E;rho_ice,rho_ice;nu,nu];
+elseif size(EE,1)==1
+   %%if only a 1x2 vector is entered, this is Young's modulus for RHS and LHS
+   E1       = EE(1);
+   E2       = EE(2);
+   rho_ice  = pram(4);
+   nu       = pram(5);
+   EE       = [E1,E2;rho_ice,rho_ice;nu,nu];
 end
 if ~exist('rho')
    rho   = 1025;

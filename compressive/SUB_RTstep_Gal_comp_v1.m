@@ -1,4 +1,4 @@
-function [R,T,y] = SUB_RTstep_Gal_comp_v1(...
+function [R,T,Ac_scat,Bc_scat,y] = SUB_RTstep_Gal_comp_v1(...
 			phys_vars,hh,bc,NN,youngs,Ainc_vec)
 
 %% Notation closer to Williams (2014);
@@ -27,9 +27,9 @@ if ~exist('phys_vars')
    phys_vars   = {period,theta_inc,H_dim};
 end
 if ~exist('hh')
-   hh = [1 2];
+   %hh = [1 2];
    %hh = [2 1];
-   %hh = [0 1];
+   hh = [0 1];
    %hh = [1 0];
    %hh = [1 1];
 end
@@ -50,11 +50,11 @@ end
 
 %%incident waves:
 if ~exist('Ainc_vec')
-   Ainc2    = 1;%%f-g wave from lhs;
-   Binc2    = 0;%%f-g wave from rhs;
+   Ainc2    = .1;%%f-g wave from lhs;
+   Binc2    = 0.3;%%f-g wave from rhs;
    Ac_inc   = 0;%%compressive wave from lhs;
-   Bc_inc   = 0;%%compressive wave from lhs;
-   Ainc_vec = [Ac_inc,Ainc2,Bc_inc,Binc2];
+   Bc_inc   = 0.5;%%compressive wave from lhs;
+   Ainc_vec = [Ac_inc,Ainc2,Bc_inc,Binc2].';
 end
 Ac_inc   = Ainc_vec(1);
 Ainc2    = Ainc_vec(2);
@@ -69,10 +69,6 @@ end
 
 %% tried to improve the number of roots needed
 %% but not working at the moment - so don't recommend this option;
-FAST_KERNEL = 0;
-if exist('Mlog')
-   FAST_KERNEL = 1;
-end
 
 %% DO NONDIMENSIONALIZATION:
 Nterms   = NN(1);
@@ -127,23 +123,25 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Elastic constants:
-nu       = NDphyspram(5);
 E1       = youngs(1);%%E the same on both sides
 E2       = youngs(2);
+nu1      = NDphyspram(5);
+nu2      = NDphyspram(5);%%allow these to differ on both sides
+rho_ice1 = NDphyspram(4);
+rho_ice2 = NDphyspram(4);%%allow these to differ on both sides
 rho_wtr  = NDphyspram(3);
-rho_ice  = NDphyspram(4);
 om       = 2*pi/phys_vars{1};
 
 %%Compressional stuff for u problem:
-mu1_lame = E1/2/(1+nu);
-mu2_lame = E2/2/(1+nu);
-Kc1_dim  = E1*hh(1)/(1-nu^2);%%compressional rigidity ~ Pa*m ~ rho_wtr*om^2*L^2*L
-Kc2_dim  = E2*hh(2)/(1-nu^2);
+mu1_lame = E1/2/(1+nu1);
+mu2_lame = E2/2/(1+nu2);
+Kc1_dim  = E1*hh(1)/(1-nu1^2);%%compressional rigidity ~ Pa*m ~ rho_wtr*om^2*L^2*L
+Kc2_dim  = E2*hh(2)/(1-nu2^2);
 Kc1      = Kc1_dim/(rho_wtr*om^2*L^2)/L;
 Kc2      = Kc2_dim/(rho_wtr*om^2*L^2)/L;
 %%
-m1_dim   = rho_ice*hh(1);
-m2_dim   = rho_ice*hh(2);
+m1_dim   = rho_ice1*hh(1);
+m2_dim   = rho_ice2*hh(2);
 sig1_dim = m1_dim/rho_wtr;
 sig2_dim = m2_dim/rho_wtr;
 zc1_dim  = -sig1_dim+hh(1)/2;
@@ -167,8 +165,8 @@ kc2      = kc2_dim*L;
 %%
 M1_rel   = rho_wtr*om^2*L^4;%%scale bending moment by this, since \int\sig_ij.(z-z_c).dz ~ Pa*m^2 ~ rho_wtr*om^2*L^2*L^2 = D1/L
 M0_rel   = rho_wtr*om^2*L^3;%%scale zero-th moment by this, since \int\sig_ij.dz ~ Pa*m ~ rho_wtr*om^2*L^2*L = D1/L^2
-J1_dim   = rho_ice*hh(1)^3/12;
-J2_dim   = rho_ice*hh(2)^3/12;
+J1_dim   = rho_ice1*hh(1)^3/12;
+J2_dim   = rho_ice2*hh(2)^3/12;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%
@@ -192,22 +190,148 @@ if 0%%test rts etc
   HH
   for j=1:2
     gg            = Rts{j};
-    tst_disprel   = ( Dr(j)*gg.^4+del0*[1;hr(j)] ).*...
+    tst_disprel   = ( Dr(j)*gg.^4+del0*[1;sigr(j)] ).*...
                      gg.*tanh(gg*HH(j))-1
   end
   return
 end
 
 %%
-lam   = del0(1);
-mu    = -del0(2);
-nu1   = (1-nu)*alpy^2;
-sig2  = mu;
-H     = H2+sig2;
+lam         = del0(1);
+mu          = -del0(2);
+nu_tilde1   = (1-nu1)*alpy^2;
+nu_tilde2   = (1-nu2)*alpy^2;
+sig2        = mu;
+H           = H2+sig2;
 %%
 gam0  = gam1(1);
 alp0  = alp1(1);
 %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+SEP_FXN  = 1;
+if SEP_FXN==1
+   input1      = {gam1,alp1,H1;
+                  gam2,alp2,H2};
+   sigr        = [sig1/sig2,1];%H
+   nunu_tilde  = [nu_tilde1,nu_tilde2];
+   input2      = {del0,Dr,sigr,nunu_tilde};
+   %%
+   input3   = {kc1,Kc1;
+               kc2,Kc2;
+               zc1,zc2};
+   %%
+   M1    = 1;
+   M2    = 1;
+   NMM   = [Nterms,M1,M2];
+   DO_KC = 0;
+   %%
+   [MK,forcing,xtra,intrinsic_admittance] =...
+      SUB_step_Gal_comp_kernel_forcing(input1,input2,input3,NMM,DO_KC);
+
+   %% solve integral eqn
+   uuB   = MK\forcing;
+
+   %xtra  = {rn_P1,tn_P2;
+   %         M_PM1,M_PM2;
+   %         M_u2r,M_u2t};
+   rn_unk   = xtra{1,1};
+   tn_unk   = xtra{1,2};
+   M_PM1B   = xtra{2,1}.';
+   M_PM2B   = xtra{2,2}.';
+   M_u2r    = xtra{3,1};
+   M_u2t    = xtra{3,2};
+   M_M0w    = xtra{4,1}.';
+   M_M1w    = xtra{4,2}.';
+   %%
+   j_inc    = 1:M1+M2+2;
+   j_unk    = M1+M2+2+(1:6);
+   jr_inc1  = 1:M1;
+   jc_inc1  = 1:M1;
+   jr_inc2  = 1:M2;
+   jc_inc2  = M1+(1:M2);
+   JC_comp  = M1+M2+(1:2);
+   %%
+   rr2                  = M_u2r*uuB;
+   tt2                  = M_u2t*uuB;
+   rr2(:,j_unk)         = rr2(:,j_unk)+rn_unk;
+   tt2(:,j_unk)         = tt2(:,j_unk)+tn_unk;
+   rr2(jr_inc1,jc_inc1) = rr2(jr_inc1,jc_inc1)+eye(M1);
+   tt2(jr_inc2,jc_inc2) = tt2(jr_inc2,jc_inc2)+eye(M2);
+   %%
+   if 0%%make testing easier
+      jt    = [2 4 1 3];
+      jt2   = 1:10;
+      %Ainc_vec(jt)
+      uuC   = [uuB(:,j_inc)*Ainc_vec(jt),uuB(:,j_unk)];
+      rr2C  = [rr2(jt2,j_inc)*Ainc_vec(jt),rr2(jt2,j_unk)];
+      tt2C  = [tt2(jt2,j_inc)*Ainc_vec(jt),tt2(jt2,j_unk)]
+   end
+
+   %%EDGE CONDITIONS:
+   if Dr(1)==0%%water on left:
+      jd0      = [1 2 3 5];%%no more [S1 (1),Q1 (2),U1 (5)], & S2=0 (3)
+                           %%keep Q2 (4) and U2 (6)
+      Ninc     = M1+M2+1;%%no of incident waves
+      jd1      = Ninc;%%no longer have incident compressive wave from left
+      j_unk    = [Ninc+(1:2)];
+      j_inc    = 1:Ninc;
+      JC_comp  = Ninc;%%column for incident compressive wave from right
+      j_dis2   = [jd1,M1+M2+2+jd0];
+      %%
+      rr2(:,j_dis2)  = [];
+      tt2(:,j_dis2)  = [];
+      
+      %%bending moment eqn
+      M2B            = M_PM2B(:,2).'*tt2;
+      M2B(jc_inc2)   = M2B(jc_inc2)+M_PM2B(jr_inc2,2).';%%'+' since M has even derivatives
+      M2Bw           = M_M1w.'*rr2;
+      M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';
+      Medge          = M2B-M2Bw;
+
+      %%compression at edge: U2=(Bc_inc+Bc_scat)
+      M0w            = M_M0w.'*rr2;
+      M0w(jc_inc1)   = M0w(jc_inc1)+ M_M0w(jr_inc1).';
+      %%
+      %JC_comp,j_unk
+      % {Medge,JC_comp(end),j_unk(end)}
+      Medge(2,:)              = M0w/(1i*kc2*Kc2);
+      Medge(2,JC_comp(end))   = Medge(2,JC_comp(end))+2;
+      Medge(2,j_unk(end))     = Medge(2,j_unk(end))-1;%%u(0^+) column
+
+      Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
+      rn2   = rr2(:,j_inc);
+      tn2   = tt2(:,j_inc);
+      rn2   = rn2+rr2(:,j_unk)*Q2B;
+      tn2   = tn2+tt2(:,j_unk)*Q2B;
+      %%
+      Bc_scat           = Q2B(2,:);%-Bc_inc;
+      Bc_scat(JC_comp)  = Bc_scat(JC_comp)-1;
+      if 0
+         jt    = [2 4 3];
+         jt2   = 1:10;
+         tst_Q2B   = Q2B*Ainc_vec(jt);
+         tst_rn2   = rn2(jt2,:)*Ainc_vec(jt);
+         tst_tn2   = tn2(jt2,:)%*Ainc_vec(jt)
+      end
+      %%
+      Rp = rn2(jr_inc1,jc_inc1)
+      Tp = [Bc_scat(jc_inc1);
+            tn2(jr_inc2,jc_inc1)]
+      %%
+      jc2   = [JC_comp,jc_inc2];
+      Tm    = rn2(jr_inc1,jc2);
+      Rm    = [Bc_scat(jc2);
+               tn2(jr_inc2,jc2)];
+
+      {'R',Rp*Ainc2+Tm(1,:)*[Bc_inc;Binc2];
+       'T',Tp(2,:)*Ainc2+Rm(2,:)*[Bc_inc;Binc2];
+       'Bc_scat',Tp(1,:)*Ainc2+Rm(1,:)*[Bc_inc;Binc2]}
+   end
+   GEN_pause
+end
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 BGzz1 = calc_res({lam,mu,H1},Dr(1),hr(1),gam1).*gam1./alp1;%%BG_0^(0)
 Lam1  = Dr(1)*gam1.^4+lam-hr(1)*mu;
 BGz1  = -Lam1.*BGzz1;%%BG_0^(1); why '-'? (in W&P paper, but seems wrong)
@@ -224,7 +348,7 @@ BG2   = Lam2.*BGz2B;
 %% CALC Fm0 & Fmr:
 mvec  = (0:Nterms)';
 alpC  = .5-1/3*INC_SUB*(hr(1)~=1);%%=1/6 if submergence included;
-			       %%=1/2 if no submergence.
+			          %%=1/2 if no submergence.
 kap1     = -1i*gam1*H2;
 besJ1    = besselj(2*mvec'+alpC,kap1).';
 c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
@@ -374,8 +498,8 @@ M_M1w = -M1_wtr.';%%\int\sig_11*(z-zc1)dz=\int(-P)*(z-zc1)dz=-\int\phi*(z-zc1)dz
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%FORCING TERMS:
-fm1   =  gam1.^2-nu1;
-fm2   =  gam2.^2-nu1;
+fm1   =  gam1.^2-nu_tilde1;
+fm2   =  gam2.^2-nu_tilde2;
 E1    =  [1+0*alp1,-Dr(1)*fm1];
 E2    =  [1+0*alp2,-Dr(2)*fm2];
 E1B   =  [-1+0*alp1,Dr(1)*fm1];%% S=-(L^2/D1)*D*w_xxx=D/D1*\pa_{xND}^3(wND), psi=-w_x
@@ -406,7 +530,9 @@ rr2(1)      = rr2(1)+Ainc2;%%now same as (24) of W&P
 rr2(:,2:3)  = rr2(:,2:3)+2i*diag(BGz1B)*E1B;
 
 %%from side integrals;
+jside
 rr2(:,jside)   = rr2(:,jside)+[rr_wtr_psi2,rr_wtr_U2];
+%tst_rr2 = rr2(jt2,:),pause
 
 %%
 tt          = -2*diag(BG2)*F2.'*uu;
@@ -414,6 +540,8 @@ tt(:,4:5)   = tt(:,4:5)+2*diag(BGz2)*E2;
 tt2         = 2i*diag(BG2)*F2.'*uuB;
 tt2(1)      = tt2(1)+Binc2;
 tt2(:,4:5)  = tt2(:,4:5)-2i*diag(BGz2B)*E2B;%%like W&P paper (but Q vector -> -Q)
+%tst_tt2 = tt2(jt2,:),pause
+
 if 0
    jt = 1:5;
    rr(jt,:)/1i, rr2(jt,:)
@@ -456,12 +584,12 @@ if Dr(1)==0%%water on left:
 
 
 
-   Q2B      = -Medge(:,2:3)\Medge(:,1);%pause
+   Q2B      = -Medge(:,2:3)\Medge(:,1);
    %%
    rn  = rr*[1;Q2];
    tn  = tt*[1;Q2];
-   rn2      = rr2*[1;Q2B];
-   tn2      = tt2*[1;Q2B];
+   rn2      = rr2*[1;Q2B];%tst_rn2   = rn2(jt2),pause
+   tn2      = tt2*[1;Q2B];%tst_tn2   = tn2(jt2),pause
    Bc_scat  = Q2B(2)-Bc_inc;
    %%
    Ac_inc   = 0;
@@ -645,13 +773,13 @@ end
 
 %%REFLECTION AND TRANSMISSION COEFFICIENTS:
 if DO_SWAP==0
-   R2 = rn2(1)/Ainc2;
-   T2 = tn2(1)/Ainc2;
+   R2 = rn2(1);%/Ainc2;
+   T2 = tn2(1);%/Ainc2;
    s  = ( BG1(1)/BG2(1) );%intrinsic admittance
    y2 = {Z_out,rn,tn,s};
 else
-   R2 = tn2(1)/Binc2;
-   T2 = rn2(1)/Binc2;
+   R2 = tn2(1);%/Binc2;
+   T2 = rn2(1);%/Binc2;
    s  = ( BG2(1)/BG1(1) );%intrinsic admittance
    y2 = {Z_out,tn,rn,s};
    %%
@@ -731,8 +859,8 @@ if do_test==1%%test new results
    disp([abs(R2),abs(T2)])
    disp(R2*R2'+s*T2*T2')
    %%
-   fp1 = gam1.^2+nu1;
-   fp2 = gam2.^2+nu1;
+   fp1 = gam1.^2+nu_tilde1;
+   fp2 = gam2.^2+nu_tilde2;
 
    %% New energy check:
    Ew_fac1  = -1/2/BG1(1);
@@ -742,11 +870,11 @@ if do_test==1%%test new results
    Ec_fac1  = kc1*Kc1;
    Ec_fac2  = kc2*Kc2;
    %%
-   Ec_in    = Ec_fac1*abs(Ac_inc )^2 + Ec_fac2*abs(Bc_inc )^2
-   Ec_out   = Ec_fac1*abs(Ac_scat)^2 + Ec_fac2*abs(Bc_scat)^2
-   Ew_in    = Ew_fac1*abs(Ainc2  )^2 + Ew_fac2*abs(Binc2  )^2
-   Ew_out   = Ew_fac1*abs(rn2(1) )^2 + Ew_fac2*abs(tn2(1) )^2
-   tstE_new = [Ew_in+Ec_in,Ew_out+Ec_out]
+   Ec_in    = Ec_fac1*abs(Ac_inc )^2 + Ec_fac2*abs(Bc_inc )^2%%compressive energy input
+   Ec_out   = Ec_fac1*abs(Ac_scat)^2 + Ec_fac2*abs(Bc_scat)^2%%compressive energy output
+   Ew_in    = Ew_fac1*abs(Ainc2  )^2 + Ew_fac2*abs(Binc2  )^2%%flex-grav energy input
+   Ew_out   = Ew_fac1*abs(rn2(1) )^2 + Ew_fac2*abs(tn2(1) )^2%%flex-grav energy output
+   tstE_new = [Ew_in+Ec_in,Ew_out+Ec_out]                    %%total energy: in=out
    %%
    [Ainc2,tn2(1)],[Binc2,rn2(1)]
    if bc==0
@@ -878,8 +1006,8 @@ elseif do_test==2%%test old results
    disp([abs(R),abs(T)])
    disp(R*R'+s*T*T')
    %%
-   fp1 = gam1.^2+nu1;
-   fp2 = gam2.^2+nu1;
+   fp1 = gam1.^2+nu_tilde1;
+   fp2 = gam2.^2+nu_tilde2;
    %%
    if bc==1 | hh(1)==0
       disp('check free edge conditions');
