@@ -1,11 +1,11 @@
-function [R,T,y] = SUB_RTstep_Galerkin_v0(...
+function [R,T,y] = SUB_RTstep_Gal_comp_v0(...
 			phys_vars,hh,bc,NN,INC_SUB,do_test,Mlog)
 %% same as Williams & Porter (2009),
 %% but changed to make notation closer to Williams (2014) 
 %%
 %% calc's scattering coeffiecients for an ice step
 %% CALL: [R,T,y]=...
-%%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
+%%   SUB_RTstep_Gal_comp_v0(phys_vars,hh,bc,NN,INC_SUB)
 %% INPUTS: N is no of imag roots to use;
 %%   phys_vars=(vector) T or [T, theta_inc=angle of incidence];
 %%     or (cell) {T,theta_inc,H_dim}.

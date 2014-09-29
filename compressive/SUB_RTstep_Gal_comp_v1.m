@@ -1,11 +1,11 @@
-function [R,T,y] = SUB_RTstep_Galerkin_corrected_v1(...
+function [R,T,y] = SUB_RTstep_Gal_comp_v1(...
 			phys_vars,hh,bc,NN,youngs,Ainc_vec)
 
 %% Notation closer to Williams (2014);
 %%
 %% calc's scattering coefficients for an ice step
 %% CALL: [R,T,y]=...
-%%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
+%%   SUB_RTstep_Gal_comp_v1(phys_vars,hh,bc,NN,INC_SUB)
 %% INPUTS: N is no of imag roots to use;
 %%   phys_vars=(vector) T or [T, theta_inc=angle of incidence];
 %%     or (cell) {T,theta_inc,H_dim}.
@@ -16,6 +16,7 @@ function [R,T,y] = SUB_RTstep_Galerkin_corrected_v1(...
 %%     & no of roots to use
 %% OUTPUTS: R&T are reflection and transmission coefficients;
 %%   y=...
+%%TODO Young's -> EE
 
 INC_SUB  = 1;
 do_test  = 1;
@@ -300,7 +301,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Moments of pressure M0w and M1w:
-%%\int_{-\sig2}^{-sig1}\varf
+%%\int_{-\sig2}^{-sig1}\varf.dz
 denom    = 1+exp(-2*gam1*H1);
 num0     = 1-exp(-2*gam1*H2);
 exfac    = exp(-gam1*(H1-H2));
@@ -319,6 +320,7 @@ if 0
    return;
 end
 %%
+%%\int_{-\sig2}^{-sig1}(z-z_c)\varf.dz, z=z_c is center of rhs plate
 M1a      = (H1./Lam1-1)./gam1.^2;
 num1     = (1-gam1*H2)+(1+gam1*H2).*exp(-2*gam1*H2);
 M1b      = num1.*exfac./gam1.^2./denom;
@@ -420,7 +422,7 @@ end
 %%
 M_PM1 = E1.'*diag(-1./Lam1);%%why '-'? (in W&P paper, but seems wrong)
 M_PM2 = E2.'*diag(-1./Lam2);%%why '-'? (in W&P paper, but seems wrong)
-M_PM1B   = diag([-1,1])*E1B.'*diag(1./Lam1);%% M=-L*Dr*Lm(w)=-Dr*-fm*(wND)=Dr*fm=+L*Dr*fm
+M_PM1B   = diag([-1,1])*E1B.'*diag(1./Lam1);%% M=-Dr*Lm(w)=-Dr*[-fm*(wND)]=Dr*fm
 M_PM2B   = diag([-1,1])*E2B.'*diag(1./Lam2);%%
 
 %%APPLY EDGE CONDITIONS:
@@ -491,7 +493,7 @@ elseif bc==1%%free edges: col's of Medge corresp to [1 psi1 psi2 U1 U2]
    Medge(2,:)  = M2B-M2Bw;
 
    %%compression at edge (LHS):
-   %% *U1=Ac_inc+Ac_scat=2*Ac_inc
+   %% *U1=Ac_inc+Ac_scat=2*Ac_inc, or U1-2*Ac_inc=0
    Ac_scat     = Ac_inc;%%u_x=0
    U1          = 2*Ac_inc;
    Medge(3,1)  = U1;
@@ -540,8 +542,6 @@ else%%frozen edges:[1,S1,Q1,S2,Q2,U1,U2]->[1,S1,Q1,U1,U2]
    %%
    tt(:,2:3)   = tt(:,2:3)+tt(:,4:5);
    tt(:,4:5)   = [];
-   tt2(:,2:3)  = tt2(:,2:3)+tt2(:,4:5);
-   tt2(:,4:5)  = [];
    %%
    PM1      = M_PM1*rr;
    PM1(:,1) = PM1(:,1)+1i*Ainc*M_PM1(:,1);
@@ -553,6 +553,8 @@ else%%frozen edges:[1,S1,Q1,S2,Q2,U1,U2]->[1,S1,Q1,U1,U2]
    %%S2=S1, psi2=psi1 (cty of horizontal displacement pt1)
    rr2(:,2:3)  = rr2(:,2:3)+rr2(:,4:5);%% [-S,w_x](L)=[-S,w_x](R) so eliminate (R)
    rr2(:,4:5)  = [];
+   tt2(:,2:3)  = tt2(:,2:3)+tt2(:,4:5);
+   tt2(:,4:5)  = [];
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    

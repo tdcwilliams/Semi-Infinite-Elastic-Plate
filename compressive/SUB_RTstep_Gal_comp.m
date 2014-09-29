@@ -1,11 +1,11 @@
-function [RT_mats,y] = SUB_RTstep_Galerkin_corrected(...
+function [RT_mats,y] = SUB_RTstep_Gal_comp(...
 			phys_vars,hh,bc,NN,youngs)
 %% Notation closer to Williams (2014);
 %% Outputs scattering matrix for general combo's of incident waves;
 %%
 %% calc's scattering coeffiecients for an ice step
 %% CALL: [R,T,y]=...
-%%   SUB_RTstep_Galerkin(phys_vars,hh,bc,NN,INC_SUB)
+%%   SUB_RTstep_Gal_comp(phys_vars,hh,bc,NN,INC_SUB)
 %% INPUTS: N is no of imag roots to use;
 %%   phys_vars=(vector) T or [T, theta_inc=angle of incidence];
 %%     or (cell) {T,theta_inc,H_dim}.
