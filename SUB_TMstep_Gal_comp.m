@@ -18,7 +18,13 @@ function [Rp,Tp,Rm,Tm,y] = SUB_RTstep_Gal_comp_v2(...
 %%   y=...
 
 INC_SUB  = 1;
-do_test  = 1;
+do_test  = 0;
+if nargin==0
+   %% do some tests
+   %% - print |R|&|T|, and check energy;
+   do_test  = 1;
+end
+
 if ~exist('phys_vars')
    period      = 10;%% wave period [s]
    theta_inc   = 0;%% wave incident angle [degrees]
@@ -57,12 +63,7 @@ end
 %%include surge or not
 if ~exist('SURGE')
    SURGE = 1;
-end
-
-if nargin==0
-   %% do some tests
-   %% - print |R|&|T|, and check energy;
-   do_test  = 1;
+   %SURGE = 0;
 end
 
 %% tried to improve the number of roots needed
