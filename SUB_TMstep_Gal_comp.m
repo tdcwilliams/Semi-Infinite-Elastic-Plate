@@ -1,4 +1,4 @@
-function [Rp,Tp,Rm,Tm,y] = SUB_RTstep_Gal_comp_v2(...
+function [Rp,Tp,Rm,Tm,y] = SUB_TMstep_Gal_comp(...
 			phys_vars,hh,bc,NN,EE,SURGE)
 
 %% Notation closer to Williams (2014);
@@ -93,8 +93,8 @@ else
   HH                       = [H H];
 end
 
-%%want larger ice thickness on right:
-DO_SWAP  = ( hh(1)>hh(2) );
+%%want larger ice submergence on right:
+DO_SWAP  = ( EE(2,1)*hh(1)>EE(2,2)*hh(2) );
 if DO_SWAP
    hh    = fliplr(hh);
    EE    = fliplr(EE);
@@ -194,7 +194,6 @@ lam         = del0(1);
 mu          = -del0(2);
 nu_tilde1   = (1-nu1)*alpy^2;
 nu_tilde2   = (1-nu2)*alpy^2;
-sig2        = mu;
 H           = H2+sig2;
 %%
 gam0  = gam1(1);
