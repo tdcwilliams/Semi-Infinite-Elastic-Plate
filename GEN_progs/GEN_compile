@@ -1,0 +1,6 @@
+mex GEN_ADr.c
+mex GEN_cheby_polys.c
+mex GEN_DA.c
+mex GEN_DAD.c
+mex GEN_numdiff.c
+mex GEN_run_sum.c

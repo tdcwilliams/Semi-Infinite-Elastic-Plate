@@ -62,7 +62,6 @@ elseif prod(size(EE))==1
    nu       = pram(5);
    EE       = [E,E;rho_ice,rho_ice;nu,nu];
 end
-%hh,EE
 
 rho_ice  = pram(4);%% kg/m^3
 nu       = pram(5);
