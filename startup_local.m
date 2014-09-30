@@ -1,5 +1,5 @@
 format long;
-addpath xtra_funs;
+addpath main_funs;
 addpath RTS_progs;
 addpath ND_progs;
 addpath GEN_progs;
