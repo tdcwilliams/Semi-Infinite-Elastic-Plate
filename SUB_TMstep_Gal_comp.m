@@ -1,5 +1,5 @@
 function [Rp,Tp,Rm,Tm,y] = SUB_RTstep_Gal_comp_v2(...
-			phys_vars,hh,bc,NN,EE,Ainc_vec,SURGE)
+			phys_vars,hh,bc,NN,EE,SURGE)
 
 %% Notation closer to Williams (2014);
 %%
@@ -16,7 +16,6 @@ function [Rp,Tp,Rm,Tm,y] = SUB_RTstep_Gal_comp_v2(...
 %%     & no of roots to use
 %% OUTPUTS: R&T are reflection and transmission coefficients;
 %%   y=...
-%%TODO Young's -> EE
 
 INC_SUB  = 1;
 do_test  = 1;
@@ -54,19 +53,6 @@ else
             prams(5),prams(5)];
    end
 end
-
-%%incident waves:
-if ~exist('Ainc_vec')
-   Ainc2    = .1;%%f-g wave from lhs;
-   Binc2    = 0.3;%%f-g wave from rhs;
-   Ac_inc   = 0.1;%%compressive wave from lhs;
-   Bc_inc   = 0.5;%%compressive wave from lhs;
-   Ainc_vec = [Ac_inc,Ainc2,Bc_inc,Binc2].';
-end
-Ac_inc   = Ainc_vec(1);
-Ainc2    = Ainc_vec(2);
-Bc_inc   = Ainc_vec(3);
-Binc2    = Ainc_vec(4);
 
 %%include surge or not
 if ~exist('SURGE')
@@ -114,14 +100,6 @@ if DO_SWAP
    Rts   = Rts([2 1]);
    rts   = rts([2 1]);
    HH    = HH([2 1]);
-   %%
-   tmp   = Ainc2;
-   Ainc2 = Binc2;
-   Binc2 = tmp;
-   %%
-   tmp      = Ac_inc;
-   Ac_inc   = Bc_inc;
-   Bc_inc   = tmp;
 end
 
 if ~DO_SWAP
@@ -174,13 +152,16 @@ kc2_dim  = sqrt(om^2*m2_dim/Kc2_dim);
 kc1      = kc1_dim*L;
 kc2      = kc2_dim*L;
 %%
-M1_rel   = rho_wtr*om^2*L^4;%%scale bending moment by this, since \int\sig_ij.(z-z_c).dz ~ Pa*m^2 ~ rho_wtr*om^2*L^2*L^2 = D1/L
-M0_rel   = rho_wtr*om^2*L^3;%%scale zero-th moment by this, since \int\sig_ij.dz ~ Pa*m ~ rho_wtr*om^2*L^2*L = D1/L^2
+M1_rel   = rho_wtr*om^2*L^4;
+   %% scale bending moment by this, since
+   %% \int\sig_ij.(z-z_c).dz ~ Pa*m^2 ~ rho_wtr*om^2*L^2*L^2 = D1/L
+M0_rel   = rho_wtr*om^2*L^3;
+   %%scale zero-th moment by this, since
+   %% \int\sig_ij.dz ~ Pa*m ~ rho_wtr*om^2*L^2*L = D1/L^2
 J1_dim   = rho_ice1*hh(1)^3/12;
 J2_dim   = rho_ice2*hh(2)^3/12;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%
 hr = hh/hh(2);
 Dr = [E1/E2,1].*hr.^3;
 %%
@@ -219,884 +200,377 @@ gam0  = gam1(1);
 alp0  = alp1(1);
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-SEP_FXN  = 1;
-if SEP_FXN==1
-   input1      = {gam1,alp1,H1;
-                  gam2,alp2,H2};
-   sigr        = [sig1/sig2,1];%H
-   nunu_tilde  = [nu_tilde1,nu_tilde2];
-   input2      = {del0,Dr,sigr,nunu_tilde};
-   %%
-   input3   = {kc1,Kc1;
-               kc2,Kc2;
-               zc1,zc2};
-   %%
-   M1    = 1;
-   M2    = 1;
-   NMM   = [Nterms,M1,M2];
-   DO_KC = 0;
-   %%
-   [MK,forcing,xtra,intrinsic_admittance] =...
-      SUB_step_Gal_comp_kernel_forcing(input1,input2,input3,NMM,DO_KC);
-
-   %% solve integral eqn
-   uuB   = MK\forcing;
-
-   %xtra  = {rn_P1,tn_P2;
-   %         M_PM1,M_PM2;
-   %         M_u2r,M_u2t};
-   rn_unk   = xtra{1,1};
-   tn_unk   = xtra{1,2};
-   M_PM1B   = xtra{2,1}.';
-   M_PM2B   = xtra{2,2}.';
-   M_u2r    = xtra{3,1};
-   M_u2t    = xtra{3,2};
-   M_M0w    = xtra{4,1}.';
-   M_M1w    = xtra{4,2}.';
-   %%
-   j_inc    = 1:M1+M2+2;
-   j_unk    = M1+M2+2+(1:6);
-   jr_inc1  = 1:M1;
-   jc_inc1  = 1:M1;
-   jr_inc2  = 1:M2;
-   jc_inc2  = M1+(1:M2);
-   JC_comp  = M1+M2+(1:2);
-   %%
-   rr2                  = M_u2r*uuB;
-   tt2                  = M_u2t*uuB;
-   rr2(:,j_unk)         = rr2(:,j_unk)+rn_unk;
-   tt2(:,j_unk)         = tt2(:,j_unk)+tn_unk;
-   rr2(jr_inc1,jc_inc1) = rr2(jr_inc1,jc_inc1)+eye(M1);
-   tt2(jr_inc2,jc_inc2) = tt2(jr_inc2,jc_inc2)+eye(M2);
-   %%
-   if 0%%make testing easier
-      jt    = [2 4 1 3];
-      jt2   = 1:10;
-      %Ainc_vec(jt)
-      uuC   = [uuB(:,j_inc)*Ainc_vec(jt),uuB(:,j_unk)];
-      rr2C  = [rr2(jt2,j_inc)*Ainc_vec(jt),rr2(jt2,j_unk)];
-      tt2C  = [tt2(jt2,j_inc)*Ainc_vec(jt),tt2(jt2,j_unk)]
-   end
-
-   %%EDGE CONDITIONS:
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   if Dr(1)==0%%water on left:
-      jd0      = [1 2 3 5];%%no more [S1 (1),Q1 (2),U1 (5)], & S2=0 (3)
-                           %%keep Q2 (4) and U2 (6)
-      Ninc     = M1+M2+1;%%no of incident waves
-      jd1      = Ninc;%%no longer have incident compressive wave from left
-      j_unk    = [Ninc+(1:2)];
-      j_inc    = 1:Ninc;
-      JC_comp  = Ninc;%%column for incident compressive wave from right
-      j_dis2   = [jd1,M1+M2+2+jd0];
-      %%
-      rr2(:,j_dis2)  = [];
-      tt2(:,j_dis2)  = [];
-      
-      %%bending moment eqn (RHS)
-      M2B            = M_PM2B(:,2).'*tt2;
-      M2B(jc_inc2)   = M2B(jc_inc2)+M_PM2B(jr_inc2,2).';%%'+' since M has even derivatives
-      M2Bw           = M_M1w.'*rr2;
-      M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';%%add pressure from incident f-g waves from left
-      Medge          = M2B-M2Bw;
-
-      if SURGE==1
-         %%compression at edge (RHS): Bc_scat-Bc_inc = U2-2*Bc_inc = M0w/(1i*kc2*Kc2)
-         M0w            = M_M0w.'*rr2;
-         M0w(jc_inc1)   = M0w(jc_inc1)+ M_M0w(jr_inc1).';
-         %%
-         Medge(2,:)              = M0w/(1i*kc2*Kc2);
-         Medge(2,JC_comp(end))   = Medge(2,JC_comp(end))+2;
-         Medge(2,j_unk(end))     = Medge(2,j_unk(end))-1;%%u(0^+) column
-      else
-         %% set U2=0
-         %% => the f-g problem is decoupled
-         %% but the compressive problem depends on the f-g one:
-         %% The compressive moment should still balance:
-         %%  -2*Bc_inc = M0w/(1i*kc2*Kc2) (*)
-         %%  => only 1 value of Bc_inc is prescribed from (*)
-         Medge(2,j_unk(end))  = 1;
-      end
-
-      Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
-      rn2   = rr2(:,j_inc);
-      tn2   = tt2(:,j_inc);
-      rn2   = rn2+rr2(:,j_unk)*Q2B;
-      tn2   = tn2+tt2(:,j_unk)*Q2B;
-      %%
-      Bc_scat           = Q2B(2,:);%-Bc_inc;
-      Bc_scat(JC_comp)  = Bc_scat(JC_comp)-1;
-      if 0
-         jt    = [2 4 3];
-         jt2   = 1:10;
-         tst_Q2B   = Q2B*Ainc_vec(jt);
-         tst_rn2   = rn2(jt2,:)*Ainc_vec(jt);
-         tst_tn2   = tn2(jt2,:)%*Ainc_vec(jt)
-      end
-      %%
-      Rp = rn2(jr_inc1,jc_inc1)
-      Tp = [Bc_scat(jc_inc1);
-            tn2(jr_inc2,jc_inc1)]
-      %%
-      jc2   = [JC_comp,jc_inc2];
-      Tm    = rn2(jr_inc1,jc2);
-      Rm    = [Bc_scat(jc2);
-               tn2(jr_inc2,jc2)];
-
-      if SURGE==0
-         Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
-         Tm(:,1)  = [];
-         Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
-         Rm(1,:)  = [];
-         {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
-          'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
-      else
-         {'R',Rp*Ainc2+Tm(1,:)*[Bc_inc;Binc2];
-          'T',Tp(2,:)*Ainc2+Rm(2,:)*[Bc_inc;Binc2];
-          'Bc_scat',Tp(1,:)*Ainc2+Rm(1,:)*[Bc_inc;Binc2]}
-      end
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   elseif bc==1%%free edges: col's of Medge corresp to [inc-waves (Ninc col's), psi1 psi2 U1 U2]
-      jd0      = [1 3];%%S(0^-)=0 (col 1), S(0^+)=0 (col 3)
-      Ninc     = M1+M2+2;%%no of incident waves
-      j_unk    = [Ninc+(1:4)];
-      j_inc    = 1:Ninc;
-      JC_comp  = Ninc-1:Ninc;%%columns for incident compressive waves
-      j_dis2   = Ninc+jd0;
-      %%
-      rr2(:,j_dis2)  = [];
-      tt2(:,j_dis2)  = [];
-      Medge          = zeros(4,size(rr2,2));
-      
-      %%Bending moment eqn (LHS)
-      Medge(1,:)        = M_PM1B(:,2).'*rr2;%%bending moment: [L;R]
-      Medge(1,jc_inc1)  = Medge(1,jc_inc1)+M_PM1B(jr_inc1,2).';
-         %%need to add the LHS incident wave bending moment
-
-      %%bending moment eqn (RHS)
-      M2B            = M_PM2B(:,2).'*tt2;
-      M2B(jc_inc2)   = M2B(jc_inc2)+M_PM2B(jr_inc2,2).';%%'+' since M has even derivatives
-      M2Bw           = M_M1w.'*rr2;
-      M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';%%add pressure from incident f-g waves from left
-      Medge(2,:)     = M2B-M2Bw;
-
-      if SURGE==1
-         %%compression at edge (LHS):
-         %% *U1=Ac_inc+Ac_scat=2*Ac_inc, or U1-2*Ac_inc=0
-         Medge(3,j_unk(3))    = -1;
-         Medge(3,JC_comp(1))  = 2;
-
-         %%compression at edge (RHS): Bc_scat-Bc_inc = U2-2*Bc_inc = M0w/(1i*kc2*Kc2)
-         M0w               = M_M0w.'*rr2;
-         M0w(jc_inc1)      = M0w(jc_inc1)+ M_M0w(jr_inc1).';
-         M0i               = 0*M0w;
-         M0i(1,JC_comp(2)) = -2;
-         M0i(1,j_unk(4))   = 1;
-         Medge(4,:)        = M0w-1i*kc2*Kc2*M0i;
-      else
-         %%NB U1=0 => Ac_inc=0 so no compressive waves can exist in the LHS
-         Medge(3,j_unk(3))    = 1;
-         %% NB U2=0 => -2*Bc_inc = M0w/(1i*kc2*Kc2)
-         %% => incident wave can only have one amplitude
-         Medge(4,j_unk(4))    = 1;
-      end
-      %%
-      Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
-      rn2   = rr2(:,j_inc);
-      tn2   = tt2(:,j_inc);
-      rn2   = rn2+rr2(:,j_unk)*Q2B;
-      tn2   = tn2+tt2(:,j_unk)*Q2B;
-      %%
-      Ac_scat              = Q2B(3,:);
-      Ac_scat(JC_comp(1))  = Ac_scat(JC_comp(1))-1;
-      Bc_scat              = Q2B(4,:);
-      Bc_scat(JC_comp(2))  = Bc_scat(JC_comp(2))-1;
-      if 0
-         jt    = [2 4 3];
-         jt2   = 1:10;
-         tst_Q2B   = Q2B*Ainc_vec(jt);
-         tst_rn2   = rn2(jt2,:)*Ainc_vec(jt);
-         tst_tn2   = tn2(jt2,:)%*Ainc_vec(jt)
-      end
-      %%
-      jc1   = [JC_comp(1),jc_inc1];
-      Rp    = [Ac_scat(jc1);
-               rn2(jr_inc1,jc1)]
-      Tp    = [Bc_scat(jc1);
-               tn2(jr_inc2,jc1)]
-      %%
-      jc2   = [JC_comp(2),jc_inc2];
-      Tm    = [Ac_scat(jc2);
-               rn2(jr_inc1,jc2)];
-      Rm    = [Bc_scat(jc2);
-               tn2(jr_inc2,jc2)];
-
-      if SURGE==0
-         Rp(:,1)  = [];%%no compressive inc wave can exist on LHS
-         Tp(:,1)  = [];
-         Rp(1,:)  = [];%%=> no compressive wave can be generated in LHS
-         Tm(1,:)  = [];
-         Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
-         Tm(:,1)  = [];
-         Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
-         Rm(1,:)  = [];
-         {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
-          'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
-      else
-         {'R',Rp(2,:)*[Ac_inc;Ainc2]+Tm(2,:)*[Bc_inc;Binc2];
-          'T',Tp(2,:)*[Ac_inc;Ainc2]+Rm(2,:)*[Bc_inc;Binc2];
-          'Ac_scat',Rp(1,:)*[Ac_inc;Ainc2]+Tm(1,:)*[Bc_inc;Binc2];
-          'Bc_scat',Tp(1,:)*[Ac_inc;Ainc2]+Rm(1,:)*[Bc_inc;Binc2]}
-      end
-
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   elseif bc==0%%frozen edges
-      jd0      = [3 4];%%S(0^+)=S(0^-), \psi(0^+)=\psi(0^-), so remove "+"
-      Ninc     = M1+M2+2;%%no of incident waves
-      j_unk    = [Ninc+(1:4)];
-      j_inc    = 1:Ninc;
-      JC_comp  = Ninc-1:Ninc;%%columns for incident compressive waves
-      j_dis2   = Ninc+jd0;
-      %%
-      rr2(:,j_dis2-2)  = rr2(:,j_dis2-2)+rr2(:,j_dis2);
-      tt2(:,j_dis2-2)  = tt2(:,j_dis2-2)+tt2(:,j_dis2);
-      rr2(:,j_dis2)  = [];
-      tt2(:,j_dis2)  = [];
-
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      Medge = zeros(4,size(rr2,2));
-      if SURGE==1
-         %% cty of horizontal displacement
-         Medge(1,j_unk) = [0 dzc -1 1];
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-         %% 0 moment (RHS): (1i*kc2*Kc2)*(Bc_scat-Bc_inc) = (1i*kc2*Kc2)*(U2-2*Bc_inc)
-         M0i2              = 0*Medge(2,:);
-         M0i2(JC_comp(2))  = -2;
-         M0i2(j_unk(4))    = 1;  
-         M0i2              = M0i2*(1i*kc2*Kc2);
-
-         %% 0 moment (LHS): (1i*kc1*Kc1)*(Ac_inc-Ac_scat) = (1i*kc1*Kc1)*(2*Ac_inc-U1)
-         M0i1              = 0*Medge(2,:);
-         M0i1(JC_comp(1))  = 2;
-         M0i1(j_unk(3))    = -1;  
-         M0i1              = M0i1*(1i*kc1*Kc1);
-
-         %% 0 moment from water:
-         M0w            = M_M0w.'*rr2;
-         M0w(jc_inc1)   = M0w(jc_inc1)+ M_M0w(jr_inc1).';
-
-         %% full 0 moment eqn:
-         Medge(2,:)  = M0w+M0i1-M0i2;
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-         %% Bending moment (LHS)
-         M1i1           = M_PM1B(:,2).'*rr2;%%bending moment: [L;R]
-         M1i1(jc_inc1)  = M1i1(jc_inc1)+M_PM1B(jr_inc1,2).';
-            %%need to add the LHS incident wave bending moment
-
-         %% Bending moment (RHS)
-         M1i2           = M_PM2B(:,2).'*tt2;
-         M1i2(jc_inc2)  = M1i2(jc_inc2)+M_PM2B(jr_inc2,2).';
-            %%need to add the RHS incident wave bending moment
-            %%'+' since M has even derivatives
-
-         %% Bending moment (water)
-         M2Bw           = M_M1w.'*rr2;
-         M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';
-         Medge(3,:)     = M1i2-M1i1-M2Bw-dzc*M0i1;
-         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      else
-         %%SET U2=U2=0
-         %%=>psi(0^-)=0
-         %%get standing waves in both sides
-         %%amplitudes from M0 & M1 equations
-         Medge(1,j_unk(3)) = 1;
-         Medge(2,j_unk(4)) = 1;
-         Medge(3,j_unk(2)) = 1;
-      end
-
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      %% w (LHS):
-      M_W1           = M_PM1B(:,1).'*rr2;
-      M_W1(jc_inc1)  = M_W1(jc_inc1)+M_PM1B(jr_inc1,1).';
-
-      %% w (RHS):
-      M_W2           = M_PM2B(:,1).'*tt2;
-      M_W2(jc_inc2)  = M_W2(jc_inc2)+M_PM2B(jr_inc2,1).';
-
-      %% w cts:
-      Medge(4,:) = M_W2-M_W1;
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-      Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
-      rn2   = rr2(:,j_inc);
-      tn2   = tt2(:,j_inc);
-      rn2   = rn2+rr2(:,j_unk)*Q2B;
-      tn2   = tn2+tt2(:,j_unk)*Q2B;
-      %%
-      Ac_scat              = Q2B(3,:);%%U(0^-)=Ac_inc+Ac_scat
-      Ac_scat(JC_comp(1))  = Ac_scat(JC_comp(1))-1;
-      Bc_scat              = Q2B(4,:);%%U(0^+)=Bc_inc+Bc_scat
-      Bc_scat(JC_comp(2))  = Bc_scat(JC_comp(2))-1;
-      %%
-      jc1   = [JC_comp(1),jc_inc1];
-      Rp    = [Ac_scat(jc1);
-               rn2(jr_inc1,jc1)]
-      Tp    = [Bc_scat(jc1);
-               tn2(jr_inc2,jc1)]
-      %%
-      jc2   = [JC_comp(2),jc_inc2];
-      Tm    = [Ac_scat(jc2);
-               rn2(jr_inc1,jc2)];
-      Rm    = [Bc_scat(jc2);
-               tn2(jr_inc2,jc2)];
-
-      if SURGE==0
-         Rp(:,1)  = [];%%no compressive inc wave can exist on LHS
-         Tp(:,1)  = [];
-         Rp(1,:)  = [];%%=> no compressive wave can be generated in LHS
-         Tm(1,:)  = [];
-         Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
-         Tm(:,1)  = [];
-         Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
-         Rm(1,:)  = [];
-         {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
-          'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
-      else
-         {'R',Rp(2,:)*[Ac_inc;Ainc2]+Tm(2,:)*[Bc_inc;Binc2];
-          'T',Tp(2,:)*[Ac_inc;Ainc2]+Rm(2,:)*[Bc_inc;Binc2];
-          'Ac_scat',Rp(1,:)*[Ac_inc;Ainc2]+Tm(1,:)*[Bc_inc;Binc2];
-          'Bc_scat',Tp(1,:)*[Ac_inc;Ainc2]+Rm(1,:)*[Bc_inc;Binc2]}
-      end
-   end
-   GEN_pause
-end
+input1      = {gam1,alp1,H1;
+               gam2,alp2,H2};
+sigr        = [sig1/sig2,1];%H
+nunu_tilde  = [nu_tilde1,nu_tilde2];
+input2      = {del0,Dr,sigr,nunu_tilde};
 %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+input3   = {kc1,Kc1;
+            kc2,Kc2;
+            zc1,zc2};
+%%
+M1    = 1;
+M2    = 1;
+NMM   = [Nterms,M1,M2];
+DO_KC = 0;
+%%
+[MK,forcing,xtra,intrinsic_admittance] =...
+   SUB_step_Gal_comp_kernel_forcing(input1,input2,input3,NMM,DO_KC);
 
-BGzz1 = calc_res({lam,mu,H1},Dr(1),hr(1),gam1).*gam1./alp1;%%BG_0^(0)
-Lam1  = Dr(1)*gam1.^4+lam-hr(1)*mu;
-BGz1  = -Lam1.*BGzz1;%%BG_0^(1); why '-'? (in W&P paper, but seems wrong)
-BGz1B = Lam1.*BGzz1;%%fix minus sign in BG_0^(1)
-BG1   = Lam1.*BGz1B;%%BG_0^(2)
-%%
-BGzz2 = calc_res({lam,mu,H2},Dr(2),hr(2),gam2).*gam2./alp2;
-Lam2  = Dr(2)*gam2.^4+lam-hr(2)*mu;
-BGz2  = -Lam2.*BGzz2;%%why '-'? (in W&P paper, but seems wrong)
-BGz2B = Lam2.*BGzz2;%%fix minus sign
-BG2   = Lam2.*BGz2B;
-%%
+%% solve integral eqn
+uuB   = MK\forcing;
 
-%% CALC Fm0 & Fmr:
-mvec  = (0:Nterms)';
-alpC  = .5-1/3*INC_SUB*(hr(1)~=1);%%=1/6 if submergence included;
-			          %%=1/2 if no submergence.
-kap1     = -1i*gam1*H2;
-besJ1    = besselj(2*mvec'+alpC,kap1).';
-c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
-c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
-F1       = diag(c_left)*besJ1*diag(c_rt1);%%same as (37)
+%xtra  = {rn_P1,tn_P2;
+%         M_PM1,M_PM2;
+%         M_u2r,M_u2t};
+rn_unk   = xtra{1,1};
+tn_unk   = xtra{1,2};
+M_PM1B   = xtra{2,1}.';
+M_PM2B   = xtra{2,2}.';
+M_u2r    = xtra{3,1};
+M_u2t    = xtra{3,2};
+M_M0w    = xtra{4,1}.';
+M_M1w    = xtra{4,2}.';
 %%
-kap2  = -1i*gam2*H2;
-besJ2 = besselj(2*mvec'+alpC,kap2).';
-c_rt2 = (2./kap2).^alpC./cos(kap2);
-F2    = diag(c_left)*besJ2*diag(c_rt2);
+j_inc    = 1:M1+M2+2;
+j_unk    = M1+M2+2+(1:6);
+jr_inc1  = 1:M1;
+jc_inc1  = 1:M1;
+jr_inc2  = 1:M2;
+jc_inc2  = M1+(1:M2);
+JC_comp  = M1+M2+(1:2);
 %%
-if 0%%test F1:
-   j            = 13;
-   np           = 100;
-   Np           = 1+2*Nterms;
-   tt           = (0:np)'/np;
-   varf         = cosh(gam1(j)*H2*tt)/cosh(gam1(j)*H1);
-   an           = zeros(1,Np);
-   an(1:2:Np)   = F1(:,j);
-   varf_ap      = OP_interp_gegenbauer(tt,alpC,an);
-   plot(tt,[real(varf),imag(varf)]), hold on;%pause
-   plot(tt,[real(varf_ap),imag(varf_ap)],'--r'), hold off;
-   return
-elseif 0%%test F2:
-   j            = 20;
-   np           = 100;
-   Np           = 1+2*Nterms;
-   tt           = (0:np)'/np;
-   varf         = cosh(gam2(j)*H2*tt)/cosh(gam2(j)*H2);
-   an           = zeros(1,Np);
-   an(1:2:Np)   = F2(:,j);
-   varf_ap      = OP_interp_gegenbauer(tt,alpC,an);
-   plot(tt,[real(varf),imag(varf)]), hold on;%pause
-   plot(tt,[real(varf_ap),imag(varf_ap)],'--r'), hold off;
-   return
+rr2                  = M_u2r*uuB;
+tt2                  = M_u2t*uuB;
+rr2(:,j_unk)         = rr2(:,j_unk)+rn_unk;
+tt2(:,j_unk)         = tt2(:,j_unk)+tn_unk;
+rr2(jr_inc1,jc_inc1) = rr2(jr_inc1,jc_inc1)+eye(M1);
+tt2(jr_inc2,jc_inc2) = tt2(jr_inc2,jc_inc2)+eye(M2);
+%%
+if 0%%make testing easier
+   jt    = [2 4 1 3];
+   jt2   = 1:10;
+   %Ainc_vec(jt)
+   uuC   = [uuB(:,j_inc)*Ainc_vec(jt),uuB(:,j_unk)];
+   rr2C  = [rr2(jt2,j_inc)*Ainc_vec(jt),rr2(jt2,j_unk)];
+   tt2C  = [tt2(jt2,j_inc)*Ainc_vec(jt),tt2(jt2,j_unk)]
 end
 
-if 0
-   np           = 100;
-   Np           = 1+2*Nterms;
-   tt           = (0:np)'/np;
-   uu           = alp1(1)*cosh(gam1(1)*H2*tt)/cosh(gam1(1)*H1);
-   um           = alp1(1)*F1(:,1);
-   an           = zeros(1,Np);
-   an(1:2:Np)   = um;
-   plot(tt,uu), hold on;
-   plot(tt,GEN_split_ri(OP_interp_gegenbauer(tt,alpC,an)),'--r');
-   hold off;
-   return;
-end
-
-if 0%%check iprules
-   jt=1:6;
-   if 1
-     prams1  = {[Dr(1) Dr(1)],lam,-del0(2)*hr(1)*[1 1],H1};
-     M1      = GEN_iprules_ice(gam1,gam1,prams1);
-     tst1    = M1(jt,jt)
-     M1b     = GEN_iprules_ice_num(gam1,gam1,[0 H1],[H1,H1],[H1 H1]);
-     tst1b   = M1b(jt,jt)
-   else
-     prams2  = {[Dr(2) Dr(2)],lam,-del0(2)*hr(2)*[1 1],H2};
-     M2      = GEN_iprules_ice(gam2,gam2,prams2);
-     tst2    = M2(jt,jt)
-     M2b     = GEN_iprules_ice_num(gam2,gam2,[0 H2],[H2,H2],[H2 H2]);
-     tst2b   = M2b(jt,jt)
-   end
-   return;
-end
-  
-%%MAIN KERNEL MATRIX:
-if 1%~FAST_KERNEL%%basic way:-other ways don't work
-   MK = F2*diag(1i*BG2)*F2.'+F1*diag(1i*BG1)*F1.';%%looks like same as (38c)
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%Moments of pressure M0w and M1w:
-%%\int_{-\sig2}^{-sig1}\varf.dz
-denom    = 1+exp(-2*gam1*H1);
-num0     = 1-exp(-2*gam1*H2);
-exfac    = exp(-gam1*(H1-H2));
-M0_wtr   = 1./gam1.^2./Lam1+...
-            -1./gam1.*exfac.*num0./denom;
-
-if 0
-   tstM0    = tanh(gam1*H1)./gam1-1./gam1.*exfac.*num0./denom;
-   tst_dr1  = [gam1.*tanh(gam1*H1),1./Lam1];{tst_dr1}
-   tst_dr2  = [gam2.*tanh(gam2*H2),1./Lam2];
-   tst_dr1(1:5,:)
-   tst_dr2(1:5,:)
-   tstM0(1:5)
-   M0_wtr(1:5),dzc,H1,H2
-   disp('check new dispersion relation progs! (E1,E2)')
-   return;
-end
-%%
-%%\int_{-\sig2}^{-sig1}(z-z_c)\varf.dz, z=z_c is center of rhs plate
-M1a      = (H1./Lam1-1)./gam1.^2;
-num1     = (1-gam1*H2)+(1+gam1*H2).*exp(-2*gam1*H2);
-M1b      = num1.*exfac./gam1.^2./denom;
-M1_wtr   = M1a+M1b-(H+zc2)*M0_wtr;
-
-if 0%%test M0_wtr,M1_wtr
-   jt    = 1:10;
-   x1    = gam1*H1;
-   x2    = gam1*H2;
-   int0  = (sinh(x1)-sinh(x2))./gam1./cosh(gam1*H1);
-   int1a = ( x1.*sinh(x1)-cosh(x1) )./gam1.^2./cosh(x1);
-   int1b = ( -x2.*sinh(x2)+cosh(x2) )./gam1.^2./cosh(x1);
-
-   %int1_0   = int1-H1*int0;
-   %[M0_wtr(jt),int0(jt)]
-   %[M1_wtr_0(jt),int1_0(jt)]
-
-   [int1a(jt),M1a(jt)]
-   [int1b(jt),M1b(jt)]
-   %%
-   jt2   = 3;
-   f0_in = inline('cosh(k.*(z+H))./cosh(k.*(H-sig1))');%%f0(H,k,sig1,z)
-   q0    = quad(@(z)f0_in(H,alp1(jt2),sig1,z),-sig2,-sig1);
-   f1_in = inline('(z-zc2).*cosh(k.*(z+H))./cosh(k.*(H-sig))');%%f1(H,k,sig1,z,zc2)
-   q1    = quad(@(z)f1_in(H,alp1(jt2),sig1,z,zc2),-sig2,-sig1);
-   [q0,M0_wtr(jt2)]
-   [q1,M1_wtr(jt2)]
-
-   %%test quad :)
-   %f2_in = inline('cosh(a.*b.*c.*d.*z)');
-   %q2    = quad(@(z)f2_in(1,1,1,1,z),0,1);
-   %f3_in = inline('2*sinh(e.*z).*cosh(a.*b.*c.*d.*z)');
-   %q3    = quad(@(z)f3_in(1,1,1,1,1,z),0,1);
-   %[q2,sinh(1)]
-   %[q3,(cosh(2)-1)/2]
-   return;
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%contribution from side integrals to rr2;
-%%Q2 (psi(0+)) column = #5:
-rr_wtr_psi2 = -2i*BG1.*M1_wtr;
-%%U2 (u(0+)) column = #7:
-rr_wtr_U2   = -2i*BG1.*M0_wtr;
-jside       = [5 7];
-
-%%matrix M0w=M_M0w*rr2
-M_M0w = -M0_wtr.';%%\int\sig_11 dz=\int(-P)dz=-\int\phi dz
-M_M1w = -M1_wtr.';%%\int\sig_11*(z-zc1)dz=\int(-P)*(z-zc1)dz=-\int\phi*(z-zc1)dz
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%FORCING TERMS:
-fm1   =  gam1.^2-nu_tilde1;
-fm2   =  gam2.^2-nu_tilde2;
-E1    =  [1+0*alp1,-Dr(1)*fm1];
-E2    =  [1+0*alp2,-Dr(2)*fm2];
-E1B   =  [-1+0*alp1,Dr(1)*fm1];%% S=-(L^2/D1)*D*w_xxx=D/D1*\pa_{xND}^3(wND), psi=-w_x
-E2B   =  [-1+0*alp2,Dr(2)*fm2];
-
-
-
-%%SOLVE INTEGRAL EQN:
-%Ainc  = -1i;
-Ainc  = 1;
-ME2   = F2*diag(1i*BGz2)*E2;
-ME1   = F1*diag(1i*BGz1)*E1;
-uu    = MK\[Ainc*F1(:,1),ME1,ME2];%%(38a)
-ME2B  = F2*diag(1i*BGz2B)*E2B;
-ME1B  = F1*diag(1i*BGz1B)*E1B;
-
-%%extra forcing from side integral terms in rr2;
-forcing_u            = [Ainc2*F1(:,1)-Binc2*F2(:,1),ME1B,ME2B,0*ME1B];
-forcing_u(:,jside)   = forcing_u(:,jside)+F1*[rr_wtr_psi2,rr_wtr_U2];
-uuB                  = MK\forcing_u;
-%%
-rr          = 2*diag(BG1)*F1.'*uu;%%in (24) of W&P: rr=1i*R_0(\alpha)
-rr(1)       = rr(1)+1i*Ainc;
-rr(:,2:3)   = rr(:,2:3)-2*diag(BGz1)*E1;
-%%
-rr2         = -2i*diag(BG1)*F1.'*uuB;%%now same as (24) of W&P (but Q vector -> -Q)
-rr2(1)      = rr2(1)+Ainc2;%%now same as (24) of W&P
-rr2(:,2:3)  = rr2(:,2:3)+2i*diag(BGz1B)*E1B;
-
-%%from side integrals;
-jside
-rr2(:,jside)   = rr2(:,jside)+[rr_wtr_psi2,rr_wtr_U2];
-%tst_rr2 = rr2(jt2,:),pause
-
-%%
-tt          = -2*diag(BG2)*F2.'*uu;
-tt(:,4:5)   = tt(:,4:5)+2*diag(BGz2)*E2;
-tt2         = 2i*diag(BG2)*F2.'*uuB;
-tt2(1)      = tt2(1)+Binc2;
-tt2(:,4:5)  = tt2(:,4:5)-2i*diag(BGz2B)*E2B;%%like W&P paper (but Q vector -> -Q)
-%tst_tt2 = tt2(jt2,:),pause
-
-if 0
-   jt = 1:5;
-   rr(jt,:)/1i, rr2(jt,:)
-   tt(jt,:)/1i, tt2(jt,:),return
-end
-%%
-M_PM1 = E1.'*diag(-1./Lam1);%%why '-'? (in W&P paper, but seems wrong)
-M_PM2 = E2.'*diag(-1./Lam2);%%why '-'? (in W&P paper, but seems wrong)
-M_PM1B   = diag([-1,1])*E1B.'*diag(1./Lam1);%% M=-Dr*Lm(w)=-Dr*[-fm*(wND)]=Dr*fm
-M_PM2B   = diag([-1,1])*E2B.'*diag(1./Lam2);%%
-
-%%APPLY EDGE CONDITIONS:
+%%EDGE CONDITIONS:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if Dr(1)==0%%water on left:
-   j_dis    = 2:4
-   j_dis2   = [2 3 4 6];%%no more [S1 (2),Q1 (3),U1 (6)], & S2=0 (4)
-                            %%keep Q2 (5) and U2 (7)
-   rr(:,j_dis)    = [];
-   tt(:,j_dis)    = [];
+   jd0      = [1 2 3 5];%%no more [S1 (1),Q1 (2),U1 (5)], & S2=0 (3)
+                        %%keep Q2 (4) and U2 (6)
+   Ninc     = M1+M2+1;%%no of incident waves
+   jd1      = Ninc;%%no longer have incident compressive wave from left
+   j_unk    = [Ninc+(1:2)];
+   j_inc    = 1:Ninc;
+   JC_comp  = Ninc;%%column for incident compressive wave from right
+   j_dis2   = [jd1,M1+M2+2+jd0];
+   %%
    rr2(:,j_dis2)  = [];
    tt2(:,j_dis2)  = [];
    
-   %%old
-   M2  = M_PM2(2,:)*tt;
-   Q2  = -M2(1)/M2(2);
-   
-   %%bending moment eqn
-   M2B      = M_PM2B(2,:)*tt2;
-   M2B(1)   = M2B(1)+Binc2*M_PM2B(2,1);%%'+' since M has even derivatives
-   M2Bw     = M_M1w*rr2;
-   M2Bw(1)  = M2Bw(1)+M_M1w(1)*Ainc2;
-   Medge    = M2B-M2Bw
+   %%bending moment eqn (RHS)
+   M2B            = M_PM2B(:,2).'*tt2;
+   M2B(jc_inc2)   = M2B(jc_inc2)+M_PM2B(jr_inc2,2).';%%'+' since M has even derivatives
+   M2Bw           = M_M1w.'*rr2;
+   M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';%%add pressure from incident f-g waves from left
+   Medge          = M2B-M2Bw;
 
-   %%compression at edge: U2=(Bc_inc+Bc_scat)
-   M0w      = M_M0w*rr2;
-   M0w(1)   = M0w(1)+ M_M0w(1)*Ainc2;
-   %%
-   Medge(2,:)  = M0w/(1i*kc2*Kc2);
-   Medge(2,1)  = Medge(2,1)+2*Bc_inc;
-   Medge(2,3)  = Medge(2,3)-1;
+   if SURGE==1
+      %%compression at edge (RHS): Bc_scat-Bc_inc = U2-2*Bc_inc = M0w/(1i*kc2*Kc2)
+      M0w            = M_M0w.'*rr2;
+      M0w(jc_inc1)   = M0w(jc_inc1)+ M_M0w(jr_inc1).';
+      %%
+      Medge(2,:)              = M0w/(1i*kc2*Kc2);
+      Medge(2,JC_comp(end))   = Medge(2,JC_comp(end))+2;
+      Medge(2,j_unk(end))     = Medge(2,j_unk(end))-1;%%u(0^+) column
+   else
+      %% set U2=0
+      %% => the f-g problem is decoupled
+      %% but the compressive problem depends on the f-g one:
+      %% The compressive moment should still balance:
+      %%  -2*Bc_inc = M0w/(1i*kc2*Kc2) (*)
+      %%  => only 1 value of Bc_inc is prescribed from (*)
+      Medge(2,j_unk(end))  = 1;
+   end
 
+   Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
+   rn2   = rr2(:,j_inc);
+   tn2   = tt2(:,j_inc);
+   rn2   = rn2+rr2(:,j_unk)*Q2B;
+   tn2   = tn2+tt2(:,j_unk)*Q2B;
+   %%
+   Bc_scat           = Q2B(2,:);%-Bc_inc;
+   Bc_scat(JC_comp)  = Bc_scat(JC_comp)-1;
+   if 0
+      jt    = [2 4 3];
+      jt2   = 1:10;
+      tst_Q2B   = Q2B*Ainc_vec(jt);
+      tst_rn2   = rn2(jt2,:)*Ainc_vec(jt);
+      tst_tn2   = tn2(jt2,:)%*Ainc_vec(jt)
+   end
+   %%
+   Rp = rn2(jr_inc1,jc_inc1)
+   Tp = [Bc_scat(jc_inc1);
+         tn2(jr_inc2,jc_inc1)]
+   %%
+   jc2   = [JC_comp,jc_inc2];
+   Tm    = rn2(jr_inc1,jc2);
+   Rm    = [Bc_scat(jc2);
+            tn2(jr_inc2,jc2)];
 
+   if SURGE==0
+      Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
+      Tm(:,1)  = [];
+      Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
+      Rm(1,:)  = [];
+%     {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
+%      'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
+%  else
+%     {'R',Rp*Ainc2+Tm(1,:)*[Bc_inc;Binc2];
+%      'T',Tp(2,:)*Ainc2+Rm(2,:)*[Bc_inc;Binc2];
+%      'Bc_scat',Tp(1,:)*Ainc2+Rm(1,:)*[Bc_inc;Binc2]}
+   end
 
-   Q2B      = -Medge(:,2:3)\Medge(:,1);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+elseif bc==1%%free edges: col's of Medge corresp to [inc-waves (Ninc col's), psi1 psi2 U1 U2]
+   jd0      = [1 3];%%S(0^-)=0 (col 1), S(0^+)=0 (col 3)
+   Ninc     = M1+M2+2;%%no of incident waves
+   j_unk    = [Ninc+(1:4)];
+   j_inc    = 1:Ninc;
+   JC_comp  = Ninc-1:Ninc;%%columns for incident compressive waves
+   j_dis2   = Ninc+jd0;
    %%
-   rn  = rr*[1;Q2];
-   tn  = tt*[1;Q2];
-   rn2      = rr2*[1;Q2B];%tst_rn2   = rn2(jt2),pause
-   tn2      = tt2*[1;Q2B];%tst_tn2   = tn2(jt2),pause
-   Bc_scat  = Q2B(2)-Bc_inc;
-   %%
-   Ac_inc   = 0;
-   Ac_scat  = 0;
-   %%
-   v_unk       = [1;Q2];
-   v_unk2      = eye(4,1);
-   v_unk2(3:4) = Q2B;%%Q2,U2
-   uu(:,j_dis) = [];
-elseif bc==1%%free edges: col's of Medge corresp to [1 psi1 psi2 U1 U2]
-   rr(:,[2 4]) = [];
-   tt(:,[2 4]) = [];%% S(L)=S(R)=0
-   rr2(:,[2 4])   = [];
-   tt2(:,[2 4])   = [];%% S(L)=S(R)=0
-   %%
-   MM    = [M_PM1(2,:)*rr; M_PM2(2,:)*tt];
-   MM(1) = MM(1)+1i*Ainc*M_PM1(2,1);
-   QQ    = -MM(:,2:3)\MM(:,1);%%[w_x L,w_x R]
+   rr2(:,j_dis2)  = [];
+   tt2(:,j_dis2)  = [];
+   Medge          = zeros(4,size(rr2,2));
    
    %%Bending moment eqn (LHS)
-   Medge       = M_PM1B(2,:)*rr2;%%bending moment: [L;R]
-   Medge(1,1)  = Medge(1,1)+Ainc2*M_PM1B(2,1);%%need to add the LHS incident wave bending moment
+   Medge(1,:)        = M_PM1B(:,2).'*rr2;%%bending moment: [L;R]
+   Medge(1,jc_inc1)  = Medge(1,jc_inc1)+M_PM1B(jr_inc1,2).';
+      %%need to add the LHS incident wave bending moment
 
    %%bending moment eqn (RHS)
-   M2B         = M_PM2B(2,:)*tt2;
-   M2B(1)      = M2B(1)+Binc2*M_PM2B(2,1);%%'+' since M has even derivatives
-   M2Bw        = M_M1w*rr2;
-   M2Bw(1)     = M2Bw(1)+M_M1w(1)*Ainc2;
-   Medge(2,:)  = M2B-M2Bw;
+   M2B            = M_PM2B(:,2).'*tt2;
+   M2B(jc_inc2)   = M2B(jc_inc2)+M_PM2B(jr_inc2,2).';%%'+' since M has even derivatives
+   M2Bw           = M_M1w.'*rr2;
+   M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';%%add pressure from incident f-g waves from left
+   Medge(2,:)     = M2B-M2Bw;
 
-   %%compression at edge (LHS):
-   %% *U1=Ac_inc+Ac_scat=2*Ac_inc, or U1-2*Ac_inc=0
-   Ac_scat     = Ac_inc;%%u_x=0
-   U1          = 2*Ac_inc;
-   Medge(3,1)  = U1;
-   Medge(3,4)  = -1;
+   if SURGE==1
+      %%compression at edge (LHS):
+      %% *U1=Ac_inc+Ac_scat=2*Ac_inc, or U1-2*Ac_inc=0
+      Medge(3,j_unk(3))    = -1;
+      Medge(3,JC_comp(1))  = 2;
 
-   %%compression at edge (RHS): Bc_scat-Bc_inc = U2-2*Bc_inc = M0w/(1i*kc2*Kc2)
-   M0w      = M_M0w*rr2;
-   M0w(1)   = M0w(1)+ M_M0w(1)*Ainc2
-   M0i      = 1i*kc2*Kc2*[-2*Bc_inc,0,0,0,1];
-   %%
-   Medge(4,:)  = M0w-M0i
-   %pause
-   %Medge(4,:)/(1i*kc2*Kc2),return
-   %%
-   v_unk          = eye(5,1);
-   v_unk([3 5])   = QQ;
-   rn             = rr*[1;QQ];
-   tn             = tt*[1;QQ];
-   %%
-   QQ2               = -Medge(:,2:end)\Medge(:,1);%%[psi1 psi2 U1 U2]
-   v_unk2            = eye(7,1);
-   v_unk2([3 5 6 7]) = QQ2;
-   rn2               = rr2*[1;QQ2];
-   tn2               = tt2*[1;QQ2];
-   U2                = QQ2(4);
-   Bc_scat           = U2-Bc_inc;
-   M0w*[1;QQ2]
-   Bc = {Bc_inc,Bc_scat},pause
-
-%  {M0w*[1;QQ2],...
-%     M0i*[1;QQ2],...
-%     M_M0w*rn2+ M_M0w(1)*Ainc2,...
-%     1i*kc2*Kc2*(Bc_scat-Bc_inc)},pause
-
-   if 0
-      %[M_PM1(2,:)*rr; M_PM2(2,:)*tt]/1i
-      %[M_PM1(2,:)*rr2; M_PM2(2,:)*tt2]
-      MM/1i,MM2
-      QQ,QQ2,return
+      %%compression at edge (RHS): Bc_scat-Bc_inc = U2-2*Bc_inc = M0w/(1i*kc2*Kc2)
+      M0w               = M_M0w.'*rr2;
+      M0w(jc_inc1)      = M0w(jc_inc1)+ M_M0w(jr_inc1).';
+      M0i               = 0*M0w;
+      M0i(1,JC_comp(2)) = -2;
+      M0i(1,j_unk(4))   = 1;
+      Medge(4,:)        = M0w-1i*kc2*Kc2*M0i;
+   else
+      %%NB U1=0 => Ac_inc=0 so no compressive waves can exist in the LHS
+      Medge(3,j_unk(3))    = 1;
+      %% NB U2=0 => -2*Bc_inc = M0w/(1i*kc2*Kc2)
+      %% => incident wave can only have one amplitude
+      Medge(4,j_unk(4))    = 1;
    end
-else%%frozen edges:[1,S1,Q1,S2,Q2,U1,U2]->[1,S1,Q1,U1,U2]
-   rr(:,2:3)   = rr(:,2:3)+rr(:,4:5);%% [-S,w_x](L)=[-S,w_x](R) so eliminate (R)
-   rr(:,4:5)   = [];
-
-
    %%
-   tt(:,2:3)   = tt(:,2:3)+tt(:,4:5);
-   tt(:,4:5)   = [];
+   Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
+   rn2   = rr2(:,j_inc);
+   tn2   = tt2(:,j_inc);
+   rn2   = rn2+rr2(:,j_unk)*Q2B;
+   tn2   = tn2+tt2(:,j_unk)*Q2B;
    %%
-   PM1      = M_PM1*rr;
-   PM1(:,1) = PM1(:,1)+1i*Ainc*M_PM1(:,1);
-   PM2      = M_PM2*tt;
-   dPM      = PM2-PM1;
-   Q1       = -dPM(:,2:3)\dPM(:,1);
+   Ac_scat              = Q2B(3,:);
+   Ac_scat(JC_comp(1))  = Ac_scat(JC_comp(1))-1;
+   Bc_scat              = Q2B(4,:);
+   Bc_scat(JC_comp(2))  = Bc_scat(JC_comp(2))-1;
+   if 0
+      jt    = [2 4 3];
+      jt2   = 1:10;
+      tst_Q2B   = Q2B*Ainc_vec(jt);
+      tst_rn2   = rn2(jt2,:)*Ainc_vec(jt);
+      tst_tn2   = tn2(jt2,:)%*Ainc_vec(jt)
+   end
+   %%
+   jc1   = [JC_comp(1),jc_inc1];
+   Rp    = [Ac_scat(jc1);
+            rn2(jr_inc1,jc1)]
+   Tp    = [Bc_scat(jc1);
+            tn2(jr_inc2,jc1)]
+   %%
+   jc2   = [JC_comp(2),jc_inc2];
+   Tm    = [Ac_scat(jc2);
+            rn2(jr_inc1,jc2)];
+   Rm    = [Bc_scat(jc2);
+            tn2(jr_inc2,jc2)];
 
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %%S2=S1, psi2=psi1 (cty of horizontal displacement pt1)
-   rr2(:,2:3)  = rr2(:,2:3)+rr2(:,4:5);%% [-S,w_x](L)=[-S,w_x](R) so eliminate (R)
-   rr2(:,4:5)  = [];
-   tt2(:,2:3)  = tt2(:,2:3)+tt2(:,4:5);
-   tt2(:,4:5)  = [];
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   if SURGE==0
+      Rp(:,1)  = [];%%no compressive inc wave can exist on LHS
+      Tp(:,1)  = [];
+      Rp(1,:)  = [];%%=> no compressive wave can be generated in LHS
+      Tm(1,:)  = [];
+      Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
+      Tm(:,1)  = [];
+      Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
+      Rm(1,:)  = [];
+%     {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
+%      'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
+%  else
+%     {'R',Rp(2,:)*[Ac_inc;Ainc2]+Tm(2,:)*[Bc_inc;Binc2];
+%      'T',Tp(2,:)*[Ac_inc;Ainc2]+Rm(2,:)*[Bc_inc;Binc2];
+%      'Ac_scat',Rp(1,:)*[Ac_inc;Ainc2]+Tm(1,:)*[Bc_inc;Binc2];
+%      'Bc_scat',Tp(1,:)*[Ac_inc;Ainc2]+Rm(1,:)*[Bc_inc;Binc2]}
+   end
 
-   
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% cty of horizontal displacement pt2
-   Medge = [0 0 dzc -1 1];
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+elseif bc==0%%frozen edges
+   jd0      = [3 4];%%S(0^+)=S(0^-), \psi(0^+)=\psi(0^-), so remove "+"
+   Ninc     = M1+M2+2;%%no of incident waves
+   j_unk    = [Ninc+(1:4)];
+   j_inc    = 1:Ninc;
+   JC_comp  = Ninc-1:Ninc;%%columns for incident compressive waves
+   j_dis2   = Ninc+jd0;
+   %%
+   rr2(:,j_dis2-2)  = rr2(:,j_dis2-2)+rr2(:,j_dis2);
+   tt2(:,j_dis2-2)  = tt2(:,j_dis2-2)+tt2(:,j_dis2);
+   rr2(:,j_dis2)  = [];
+   tt2(:,j_dis2)  = [];
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% 0 moment (RHS): (1i*kc2*Kc2)*(Bc_scat-Bc_inc) = (1i*kc2*Kc2)*(U2-2*Bc_inc)
-   M0i2     = 1i*kc2*Kc2*[-2*Bc_inc,0,0,0,1];
+   Medge = zeros(4,size(rr2,2));
+   if SURGE==1
+      %% cty of horizontal displacement
+      Medge(1,j_unk) = [0 dzc -1 1];
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %% 0 moment (LHS): (1i*kc1*Kc1)*(Ac_inc-Ac_scat) = (1i*kc1*Kc1)*(2*Ac_inc-U1)
-   M0i1     = 1i*kc1*Kc1*[2*Ac_inc,0,0,-1,0];
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %% 0 moment (RHS): (1i*kc2*Kc2)*(Bc_scat-Bc_inc) = (1i*kc2*Kc2)*(U2-2*Bc_inc)
+      M0i2              = 0*Medge(2,:);
+      M0i2(JC_comp(2))  = -2;
+      M0i2(j_unk(4))    = 1;  
+      M0i2              = M0i2*(1i*kc2*Kc2);
 
-   %% 0 moment from water:
-   M0w      = M_M0w*rr2;
-   M0w(1)   = M0w(1)+ M_M0w(1)*Ainc2;
+      %% 0 moment (LHS): (1i*kc1*Kc1)*(Ac_inc-Ac_scat) = (1i*kc1*Kc1)*(2*Ac_inc-U1)
+      M0i1              = 0*Medge(2,:);
+      M0i1(JC_comp(1))  = 2;
+      M0i1(j_unk(3))    = -1;  
+      M0i1              = M0i1*(1i*kc1*Kc1);
 
-   %% full 0 moment eqn:
-   Medge(2,:)  = M0w+M0i1-M0i2;
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %% 0 moment from water:
+      M0w            = M_M0w.'*rr2;
+      M0w(jc_inc1)   = M0w(jc_inc1)+ M_M0w(jr_inc1).';
 
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %% Bending moment (LHS)
-   M1i1     = M_PM1B(2,:)*rr2;%%bending moment: [L;R]
-   M1i1(1)  = M1i1(1)+Ainc2*M_PM1B(2,1);%%need to add the LHS incident wave bending moment
+      %% full 0 moment eqn:
+      Medge(2,:)  = M0w+M0i1-M0i2;
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %% Bending moment (RHS)
-   M1i2     = M_PM2B(2,:)*tt2;
-   M1i2(1)  = M1i2(1)+Binc2*M_PM2B(2,1);%%'+' since M has even derivatives
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %% Bending moment (LHS)
+      M1i1           = M_PM1B(:,2).'*rr2;%%bending moment: [L;R]
+      M1i1(jc_inc1)  = M1i1(jc_inc1)+M_PM1B(jr_inc1,2).';
+         %%need to add the LHS incident wave bending moment
 
-   %% Bending moment (water)
-   M2Bw        = M_M1w*rr2;
-   M2Bw(1)     = M2Bw(1)+M_M1w(1)*Ainc2;
-   Medge(3,:)  = M1i2-M1i1-M2Bw-dzc*M0i1;
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %% Bending moment (RHS)
+      M1i2           = M_PM2B(:,2).'*tt2;
+      M1i2(jc_inc2)  = M1i2(jc_inc2)+M_PM2B(jr_inc2,2).';
+         %%need to add the RHS incident wave bending moment
+         %%'+' since M has even derivatives
+
+      %% Bending moment (water)
+      M2Bw           = M_M1w.'*rr2;
+      M2Bw(jc_inc1)  = M2Bw(jc_inc1)+M_M1w(jr_inc1).';
+      Medge(3,:)     = M1i2-M1i1-M2Bw-dzc*M0i1;
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   else
+      %%SET U2=U2=0
+      %%=>psi(0^-)=0
+      %%get standing waves in both sides
+      %%amplitudes from M0 & M1 equations
+      Medge(1,j_unk(3)) = 1;
+      Medge(2,j_unk(4)) = 1;
+      Medge(3,j_unk(2)) = 1;
+   end
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %% w (LHS):
-   M_W1        = M_PM1B(1,:)*rr2;
-   M_W1(1)     = M_W1(1)+Ainc2*M_PM1B(1,1);
+   M_W1           = M_PM1B(:,1).'*rr2;
+   M_W1(jc_inc1)  = M_W1(jc_inc1)+M_PM1B(jr_inc1,1).';
 
    %% w (RHS):
-   M_W2        = M_PM2B(1,:)*tt2;
-   M_W2(1)     = M_W2(1)+Binc2*M_PM2B(1,1);
+   M_W2           = M_PM2B(:,1).'*tt2;
+   M_W2(jc_inc2)  = M_W2(jc_inc2)+M_PM2B(jr_inc2,1).';
 
    %% w cts:
-   Medge(4,:) = M_W2-M_W1
+   Medge(4,:) = M_W2-M_W1;
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   QQ2   = -Medge(:,2:end)\Medge(:,1);
-   S1    = QQ2(1);
-   psi1  = QQ2(2);
-   U1    = QQ2(3);
-   U2    = QQ2(4);
+   Q2B   = -Medge(:,j_unk)\Medge(:,j_inc);
+   rn2   = rr2(:,j_inc);
+   tn2   = tt2(:,j_inc);
+   rn2   = rn2+rr2(:,j_unk)*Q2B;
+   tn2   = tn2+tt2(:,j_unk)*Q2B;
    %%
-   v_unk2   = [1;S1;psi1;S1;psi1;U1;U2];
-   rn2      = rr2*[1;QQ2];
-   tn2      = tt2*[1;QQ2];
-   Ac_scat  = U1-Ac_inc;
-   Bc_scat  = U2-Bc_inc;
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   Ac_scat              = Q2B(3,:);%%U(0^-)=Ac_inc+Ac_scat
+   Ac_scat(JC_comp(1))  = Ac_scat(JC_comp(1))-1;
+   Bc_scat              = Q2B(4,:);%%U(0^+)=Bc_inc+Bc_scat
+   Bc_scat(JC_comp(2))  = Bc_scat(JC_comp(2))-1;
+   %%
+   jc1   = [JC_comp(1),jc_inc1];
+   Rp    = [Ac_scat(jc1);
+            rn2(jr_inc1,jc1)]
+   Tp    = [Bc_scat(jc1);
+            tn2(jr_inc2,jc1)]
+   %%
+   jc2   = [JC_comp(2),jc_inc2];
+   Tm    = [Ac_scat(jc2);
+            rn2(jr_inc1,jc2)];
+   Rm    = [Bc_scat(jc2);
+            tn2(jr_inc2,jc2)];
 
-   %% old
-   v_unk = [1;Q1;Q1];
-   rn    = rr*[1;Q1];
-   tn    = tt*[1;Q1];
-
-   tstM0 = -Medge(2,:)*[1;QQ2]
-   {M0w*[1;QQ2],M0i1*[1;QQ2],M0i2*[1;QQ2]}
-
-   if 0
-      %[M_PM1(2,:)*rr; M_PM2(2,:)*tt]/1i
-      %[M_PM1(2,:)*rr2; M_PM2(2,:)*tt2]
-      %MM/1i,MM2
-      Q1,Q1B,return
+   if SURGE==0
+      Rp(:,1)  = [];%%no compressive inc wave can exist on LHS
+      Tp(:,1)  = [];
+      Rp(1,:)  = [];%%=> no compressive wave can be generated in LHS
+      Tm(1,:)  = [];
+      Rm(:,1)  = [];%%inc compressive inc wave on RHS is not arbitrary
+      Tm(:,1)  = [];
+      Tp(1,:)  = [];%%=> compressive wave generated in RHS is not arbitrary
+      Rm(1,:)  = [];
+%     {'R',Rp(2,:)*[Ainc2]+Tm(2,:)*[Binc2];
+%      'T',Tp(2,:)*[Ainc2]+Rm(2,:)*[Binc2]}
+%  else
+%     {'R',Rp(2,:)*[Ac_inc;Ainc2]+Tm(2,:)*[Bc_inc;Binc2];
+%      'T',Tp(2,:)*[Ac_inc;Ainc2]+Rm(2,:)*[Bc_inc;Binc2];
+%      'Ac_scat',Rp(1,:)*[Ac_inc;Ainc2]+Tm(1,:)*[Bc_inc;Binc2];
+%      'Bc_scat',Tp(1,:)*[Ac_inc;Ainc2]+Rm(1,:)*[Bc_inc;Binc2]}
    end
 end
 
-if 0
-   jt=1:10;
-   [v_unk,v_unk2]
-   [rn(jt)/1i,rn2(jt)]
-   [tn(jt)/1i,tn2(jt)],return
-end
-
 %%REFLECTION AND TRANSMISSION COEFFICIENTS:
-if DO_SWAP==0
-   R2 = rn2(1);%/Ainc2;
-   T2 = tn2(1);%/Ainc2;
-   s  = ( BG1(1)/BG2(1) );%intrinsic admittance
-   y2 = {Z_out,rn,tn,s};
+if DO_SWAP==1
+   tmp = Rp;
+   Rp  = Rm;
+   Rm  = tmp;
+   %%
+   tmp = Tp;
+   Tp  = Tm;
+   Tm  = tmp;
+   %%
+   intrinsic_admittance = intrinsic_admittance([2 1 4 3]);
+   %%
+   y  = {Z_out,tn2,rn2,intrinsic_admittance};
 else
-   R2 = tn2(1);%/Binc2;
-   T2 = rn2(1);%/Binc2;
-   s  = ( BG2(1)/BG1(1) );%intrinsic admittance
-   y2 = {Z_out,tn,rn,s};
-   %%
-   %v_unk2   = v_unk2([1 4 5 2 3]);
-end
-R  = -1i*rn(1)/Ainc;
-T  = -1i*tn(1)/Ainc;
-s  = ( BG1(1)/BG2(1) );%intrinsic admittance
-y  = {Z_out,rn,tn,s};
-
-%if DO_SWAP==0%%test R,T for LHS wave
-%   [R,R2]
-%   [T,T2]
-%   return
-%else
-%   Rm  = -R'*T/T';
-%   Tm  = (1-abs(R)^2)/T';
-%   [Rm,R2]
-%   [Tm,T2]
-%   return
-%end
-
-if DO_SWAP
-   R   = -R'*T/T';
-   T   = (1-abs(R)^2)/T';
-   y(2:3) = [];%%can't just swap, but there is a way - FIX!
-   %%
-   %y(2:3) = y([3 2]);%%swap rn,tn
+   y  = {Z_out,rn2,tn2,intrinsic_admittance};
 end
 
-if 0%%full Green's fxn formulation:
-   %%vm=\phi(0-,z)=\sum r_n\varf_n(z)
-   uu2   = uu*v_unk;%%u(z) coefficients
-   S0    = -v_unk(1+1);%%in W&P paper, S is defined as -1*[shear resultant]
-   psi0  = -v_unk(1+2);%%\psi=-w_x on left 
-
-   W_Gz1    = 1i*BGz1;%%G_z
-   psi_Gz1  = 1i*(-1i*alp1).*BGz1;%%-G_zx
-   M_Gz1    = 1i*Dr(1)*alp1.^2.*BGz1;%%-D0*G_zxx
-   S_Gz1    = -1i*Dr(1)*(1i*alp1).^3.*BGz1;%%-D0*G_zxxx
-   %%
-   Ainc  = -1i;
-   vn0   = Ainc*eye(length(alp1),1)+...
-           -2i*diag(BG1)*F1.'*uu2+...
-           +2*psi0*M_Gz1+...
-           -2*S0*W_Gz1;%%this is rn/1i
-   jt = 1:10;
-   %[vn0(jt),-1i*rn(jt)]
-
-   PM_1  = M_PM1*rn;
-   W0    = PM_1(1); 
-   M0    = -PM_1(2); 
-   vn1   = vn0+2*W0*S_Gz1+...
-            -2*M0*psi_Gz1;%%these are the expansion coefficients for phi(0,z) from Green's thm
-
-
-   Imn1  = GEN_iprules_ice_num(gam1,gam1,[0 H1],[H1,H1],[H1 H1]);%%explicit integration using cosh product rule
-   rn1   = -1i*diag(BG1)*F1.'*uu2+...
-            +1i*diag(1i*alp1.*BG1)*Imn1*vn1+...
-            +psi0*M_Gz1+...
-            -S0*W_Gz1+...
-            +2*W0*S_Gz1+...
-            -2*M0*psi_Gz1;
-   [-1i*rn(jt),vn0(jt),rn1(jt)]
-
-
-   Imn2  = GEN_iprules_ice_num(gam2,gam2,[0 H2],[H2,H2],[H2 H2]);
-
-   return
-end
-
+return;
 
 
 if do_test==1%%test new results
