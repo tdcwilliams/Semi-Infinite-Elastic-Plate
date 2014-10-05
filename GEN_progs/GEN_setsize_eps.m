@@ -27,6 +27,10 @@ if isempty(hei)
    hei  = hei0;
 end
 
-ppos  = [marg,marg,[wid,hei]];
+if length(marg)==2
+   ppos  = [marg,[wid,hei]];
+else
+   ppos  = [marg,marg,[wid,hei]];
+end
 set(gcf,'PaperUnits','centimeters');
 set(gcf,'PaperPosition',ppos);

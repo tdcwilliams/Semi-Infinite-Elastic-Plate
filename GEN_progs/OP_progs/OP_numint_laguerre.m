@@ -9,14 +9,14 @@ function [x, w] = OP_numint_laguerre(alpha,n)
 %% http://www.mathworks.com/matlabcentral/fileexchange/8067
 %% ########################################################
 
-n=max(2,n);%% n>=2
+n  = max(2,n);%% n>=2
 
-i = 1:n;
-a = (2*i-1) + alpha;
-b = sqrt( i(1:n-1) .* ((1:n-1) + alpha) );
+i  = 1:n;
+a  = (2*i-1) + alpha;
+b  = sqrt( i(1:n-1) .* ((1:n-1) + alpha) );
 CM = diag(a) + diag(b,1) + diag(b,-1);
 
-[V L] = eig(CM);
-[x ind] = sort(diag(L));
-V = V(:,ind)';
-w = gamma(alpha+1) .* V(:,1).^2;
+[V L]    = eig(CM);
+[x ind]  = sort(diag(L));
+V        = V(:,ind)';
+w        = gamma(alpha+1) .* V(:,1).^2;

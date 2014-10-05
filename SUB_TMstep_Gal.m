@@ -157,7 +157,7 @@ input2   = {del0,Dr,sigr,nunu_tilde};
 NMM      = [Npolys,M1,M2];
 %%
 [MK,forcing,xtra,intrinsic_admittance] =...
-   SUB_step_GAL_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
+   SUB_step_Gal_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
 %forcing  = {finc1,ME1;
 %            finc2,ME2};

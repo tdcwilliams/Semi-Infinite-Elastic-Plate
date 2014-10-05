@@ -17,7 +17,7 @@ if ~exist('x0')
 end
 x     = x0*cos(chi)+y0*sin(chi);
 y     = -x0*sin(chi)+y0*cos(chi);
-w     = x+1i*y;
+w     = (x+1i*y)/GEN_radius_earth;
 r     = abs(w);
 phi   = angle(w);
 lon   = phi*180/pi;

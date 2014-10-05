@@ -40,7 +40,7 @@ k        = GEN_findroot_bisection(...
 function k  = gen_root_wtr(alpha,H,guess)
 %% finds the root of the ice dispersion relation nearest to 'guess'.
 
-tol      = 1e-8;
+tol      = 1e-12;
 k0       = guess;
 dk       = NR_corr_term(k0,alpha,H);
 k        = k0-dk;

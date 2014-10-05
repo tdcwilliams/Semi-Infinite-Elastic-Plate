@@ -1,4 +1,4 @@
-function [ag,wavlen]=GEN_get_ice_groupvel(h,T,H)
+function [ag,wavlen]=GEN_get_ice_groupvel(h,T,H,E)
 %% CALL: [ag,wavlen]=GEN_get_ice_wavelength(h,T,varargin)
 %% calc's group velocity (ag) & wavelength ('wavlen') corresponding to a given
 %% ice thickness 'h', wave period 'T', and water depth
@@ -13,17 +13,20 @@ if nargin==0
    T        = 5;
    H        = 20;
    %%
-   om       = 2*pi/T;
-   eps      = 1e-6;
-   omt      = om+eps;
-   Tt       = 2*pi/omt;
-elseif nargin==2
+   om    = 2*pi/T;
+   eps   = 1e-6;
+   omt   = om+eps;
+   Tt    = 2*pi/omt;
+elseif ~exist('H')
    H  = Inf;
 end
 
 
-pram     = NDphyspram(0);
-E        = pram(1);%% Pa
+pram  = NDphyspram(0);
+if ~exist('E')
+   E  = pram(1);%% Pa
+end
+
 g        = pram(2);%% m/s^2
 rho      = pram(3);%% kg/m^3
 rho_ice  = pram(4);%% kg/m^3
@@ -33,8 +36,8 @@ om = 2*pi./T;
 
 if h==0%% if ice is water, use GEN_get_wtr_period.m
    if H==Inf
-      k        = om.^2/g;
-      ap       = om./k;
+      k  = om.^2/g;
+      ap = om./k;
       %%
       ag       = ap/2;
       wavlen   = 2*pi./k;
@@ -70,16 +73,16 @@ else
    sk    = sech(kH).^2;
    Lam   = D*k.^4+rho*g-rho_ice*h*om.^2;
    %%
-   ag    = ( (4*D*k.^4+Lam).*tk+Lam.*kH.*sk )./...
+   ag = ( (4*D*k.^4+Lam).*tk+Lam.*kH.*sk )./...
             ( 2*om.*(rho+rho_ice*h*k.*tk) );
 end
 
 wavlen   = 2*pi./k;
 
 if DO_TEST
-   lam   = GEN_get_ice_wavelength(h,T,H);
+   lam   = GEN_get_ice_wavelength(h,T,H,E);
    [lam,wavlen]
-   lamt  = GEN_get_ice_wavelength(h,Tt,H);
+   lamt  = GEN_get_ice_wavelength(h,Tt,H,E);
    k  = 2*pi/lam;
    kt = 2*pi/lamt;
    [ag,eps/(kt-k)]

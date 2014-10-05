@@ -8,7 +8,7 @@ phi   = pi*lon/180;
 zz    = sin(th);
 rr0   = cos(th);
 %%
-r  = rr0./(1+zz);
+r  = rr0./(1+zz)*GEN_radius_earth;
 x0 = r.*cos(phi);
 y0 = r.*sin(phi);
 
@@ -17,5 +17,5 @@ y0 = r.*sin(phi);
 if ~exist('chi')
    chi   = -pi/2;
 end
-x     = x0*cos(chi)-y0*sin(chi);
-y     = x0*sin(chi)+y0*cos(chi);
+x  = x0*cos(chi)-y0*sin(chi);
+y  = x0*sin(chi)+y0*cos(chi);
