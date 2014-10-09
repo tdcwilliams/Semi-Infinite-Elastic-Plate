@@ -22,6 +22,17 @@ function [R,T,y] = SUB_RTstep_Gal(...
 %% OUTPUTS: R&T are reflection and transmission coefficients;
 %%   y=...
 
+if nargin==0
+   period      = 20;%% wave period [s]
+   theta_inc   = 0;%% wave incident angle [degrees]
+   H_dim       = 100;%% water depth [m]
+   phys_vars   = {period,theta_inc,H_dim};
+   %%
+   hh = [0,10];
+   EE = 10e9;
+end
+
+
 if ~exist('phys_vars')
    period      = 10;%% wave period [s]
    theta_inc   = 0;%% wave incident angle [degrees]
@@ -162,7 +173,7 @@ input2   = {del0,Dr,sigr,nunu_tilde};
 NMM      = [Nterms,1,0];
 %%
 [MK,forcing,xtra,intrinsic_admittance] =...
-   SUB_step_GAL_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
+   SUB_step_Gal_kernel_forcing(input1,input2,NMM,INC_SUB,DO_KC);
 
 %forcing  = {finc1,ME1;
 %            finc2,ME2};
