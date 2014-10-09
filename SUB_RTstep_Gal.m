@@ -28,8 +28,9 @@ if nargin==0
    H_dim       = 100;%% water depth [m]
    phys_vars   = {period,theta_inc,H_dim};
    %%
-   hh = [0,10];
-   EE = 10e9;
+   hh    = [0,10];
+   EE    = 2e9;
+   DO_KC = 0;
 end
 
 
@@ -71,7 +72,7 @@ if ~exist('rho_wtr')
    rho_wtr  = prams(3);
 end
 if ~exist('DO_KC')
-   DO_KC = 1;
+   DO_KC = 0;
 end
 
 do_test  = 0;
@@ -311,7 +312,7 @@ if do_test
    disp([Rm Tm]);
    %%
    if 1%%rerun program with thicknesses reversed to check
-      [Rm2,Tm2] = SUB_RTstep_Galerkin(...
+      [Rm2,Tm2] = SUB_RTstep_Gal(...
  			phys_vars,hh([2 1]),bc,NN,INC_SUB,EE(:,[2 1]),rho_wtr);
       disp('actual R&T:')
       disp([Rm2 Tm2]);

@@ -4,4 +4,5 @@ addpath RTS_progs;
 addpath ND_progs;
 addpath GEN_progs;
 addpath GEN_progs/SF_progs;
+addpath GEN_progs/OP_progs;
 addpath compressive;
