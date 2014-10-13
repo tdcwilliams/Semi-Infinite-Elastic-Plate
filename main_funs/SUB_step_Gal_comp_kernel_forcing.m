@@ -64,7 +64,7 @@ Ew_fac2  = -1/2/BG2(1);
 Ec_fac1  = kc1*Kc1;
 Ec_fac2  = kc2*Kc2;
 %%
-intrinsic_admittance = {Ew_fac1,Ew_fac2,Ec_fac1,Ec_fac2};
+intrinsic_admittance = [Ew_fac1,Ew_fac2,Ec_fac1,Ec_fac2];
 %% Ec_in    = Ec_fac1*abs(Ac_inc )^2 + Ec_fac2*abs(Bc_inc )^2 - compressive energy input
 %% Ec_out   = Ec_fac1*abs(Ac_scat)^2 + Ec_fac2*abs(Bc_scat)^2 - compressive energy output
 %% Ew_in    = Ew_fac1*abs(Ainc2  )^2 + Ew_fac2*abs(Binc2  )^2 - flex-grav energy input

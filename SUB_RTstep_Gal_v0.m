@@ -21,9 +21,9 @@ if ~exist('phys_vars')
    phys_vars   = {period,theta_inc,H_dim};
 end
 if ~exist('hh')
-   %hh = [1 2];
+   %hh = [0 1];
+   hh = [1 2];
    %hh = [2 1];
-   hh = [0 1];
    %hh = [1 0];
 end
 if ~exist('bc')
