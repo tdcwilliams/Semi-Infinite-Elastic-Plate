@@ -1,4 +1,4 @@
-function [R,T,y] = SUB_RTstep_Galerkin_corrected_v1(...
+function [out,y] = SUB_RTstep_Galerkin_corrected_v1(...
 			phys_vars,hh,bc,NN,youngs,Ainc_vec)
 
 %% Notation closer to Williams (2014);
@@ -225,13 +225,15 @@ mvec  = (0:Nterms)';
 alpC  = .5-1/3*INC_SUB*(hr(1)~=1);%%=1/6 if submergence included;
 			       %%=1/2 if no submergence.
 kap1     = -1i*gam1*H2;
-besJ1    = besselj(2*mvec'+alpC,kap1).';
+[KAP1,MU1] = meshgrid(kap1,2*mvec+alpC);
+besJ1    = besselj(MU1,KAP1);
 c_left   = gamma(alpC)*(alpC+2*mvec).*(-1).^mvec;
 c_rt1    = (2./kap1).^alpC./cosh(gam1*H1);
 F1       = diag(c_left)*besJ1*diag(c_rt1);%%same as (37)
 %%
 kap2  = -1i*gam2*H2;
-besJ2 = besselj(2*mvec'+alpC,kap2).';
+[KAP2,MU2] = meshgrid(kap2,2*mvec+alpC);
+besJ2 = besselj(MU2,KAP2);%% length(mvec) x length(kap2)
 c_rt2 = (2./kap2).^alpC./cos(kap2);
 F2    = diag(c_left)*besJ2*diag(c_rt2);
 %%
@@ -672,12 +674,21 @@ y  = {Z_out,rn,tn,s};
 %   return
 %end
 
-if DO_SWAP
+if ~DO_SWAP
+   out.R = R;
+   out.T = T;
+   out.Ac_scat = Ac_scat;
+   out.Bc_scat = Bc_scat;
+else
    R   = -R'*T/T';
    T   = (1-abs(R)^2)/T';
    y(2:3) = [];%%can't just swap, but there is a way - FIX!
    %%
    %y(2:3) = y([3 2]);%%swap rn,tn
+   out.R = R;
+   out.T = T;
+   out.Ac_scat = Bc_scat;
+   out.Bc_scat = Ac_scat;
 end
 
 if 0%%full Green's fxn formulation:
