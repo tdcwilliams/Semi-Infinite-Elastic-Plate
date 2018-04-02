@@ -406,7 +406,77 @@ methods
       obj.solution.u =...
          obj.solution.u(:,j_inc_all)+...
             obj.solution.u(:,j_unknown)*obj.solution.QU2;
-   end%%edge_conditions_ice_water
+   end%%edge_cons_ice_water
+
+   function obj = edge_cons_free(obj)
+      j_inc_all = [obj.solution.j_inc1,...
+                  obj.solution.j_inc1,...
+                  obj.solution.j_inc2,...
+                  obj.solution.jc_inc2];
+         %% no more inc compressive wave from left
+      j_unknown = [obj.solution.j_Q2(2),...
+                   obj.solution.j_U2
+                   obj.solution.j_Q1(2),...
+                   obj.solution.j_U1];
+         %%keep psi(0\pm), and u(0\pm)
+      M1 = obj.lhs_info.num_inc_waves;
+      M2 = obj.rhs_info.num_inc_waves;
+      j_inc1 = obj.solution.j_inc1;
+      j_inc2 = obj.solution.j_inc2;
+      jc_inc1 = obj.solution.jc_inc1;
+      jc_inc2 = obj.solution.jc_inc2;
+
+      %% ==============================================================
+      %%Bending moment eqn (LHS)
+      Medge = obj.lhs_info.M_PM(2,:)*obj.solution.lhs.fluid_coeffs;
+
+      %%inc water waves from LHS
+      Medge(1,j_inc1) = Medge(1,j_inc1)+obj.lhs_info.M_PM(2,1:M1);
+      %% ==============================================================
+
+      %% ==============================================================
+      %%Bending moment eqn (RHS)
+      Medge(2,:) = obj.rhs_info.M_PM(2,:)*obj.solution.rhs.fluid_coeffs;
+
+      %%inc water waves from RHS
+      Medge(2,j_inc2) = Medge(2,j_inc2)+obj.rhs_info.M_PM(2,1:M2);
+         %%'+' since M has even derivatives
+
+      %%M_1^w:
+      M1w = obj.solution.M_M1w*obj.solution.lhs.fluid_coeffs;
+
+      %%inc water waves from LHS
+      M1w(j_inc1) = M1w(j_inc1)+obj.solution.M_M1w(1:M1);
+      Medge(2,:) = Medge(2,:) - M1w;
+      %% ==============================================================
+   
+      %% ==============================================================
+      %%compression at edge (LHS):
+      %% U1=Ac_inc+Ac_scat=2*Ac_inc
+      M_edge(3,:) = 0;
+
+      %% compressive wave from left
+      M_edge(3,jc_inc1) = 2;
+      M_edge(3,j_U1) = -1;
+      %% ==============================================================
+   
+      %% ==============================================================
+      %%compression at edge (RHS):
+      %% U1=Ac_inc+Ac_scat=2*Ac_inc
+      M_edge(4,:) = 0;
+
+      %% compressive wave from right
+      fac = 1i*obj.rhs_info.kc*obj.rhs_info.Kc;
+      M_edge(4,jc_inc2) = 2*fac;
+      M_edge(4,j_U2) = -1*fac;
+
+      %%inc water waves from LHS
+      M0w = obj.solution.M_M0w*obj.solution.lhs.fluid_coeffs;
+      M0w(j_inc1) = M0w(j_inc1)+ obj.solution.M_M0w(1:M1);
+      M_edge(4,:) = M_edge(4,:) - M0w;
+      %% ==============================================================
+
+   end %% edge_cons_free
 
    function y = calc_res(obj,info)
    %% y=obj.calc_res(Z2,Dr,hr,gamma)=Res(1/f(K),gamma_n),
