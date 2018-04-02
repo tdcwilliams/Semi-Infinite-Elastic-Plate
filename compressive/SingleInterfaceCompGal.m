@@ -171,6 +171,8 @@ methods
       info.E = [-1+0*info.roots,info.Dr*info.fm];
          %% S=-(L^2/D1)*D*w_xxx=D/D1*\pa_{xND}^3(wND), psi=-w_x
       info.ME = info.F*diag(1i*info.BGz)*info.E;
+      info.M_PM = diag([-1,1])*info.E.'*diag(1./info.Lam);
+         %% M=-L*Dr*Lm(w)=-Dr*-fm*(wND)=Dr*fm=+L*Dr*fm
    end
 
    function obj = assemble(obj)
@@ -221,15 +223,15 @@ methods
       M2 = obj.rhs_info.num_inc_waves;
       Minc_tot = M1+M2+2;
       %%
-      obj.solution.j_inc1  = (1:M1);         %%col's for inc water waves from lhs
-      obj.solution.jc_inc1 = M1+1;  %%col for inc compressive wave from lhs
-      obj.solution.j_inc2  = M1+1+(1:M2); %%col's for inc water waves from rhs
-      obj.solution.jc_inc2 = M1+M2+2;  %%col for inc compressive wave from rhs
+      obj.solution.j_inc2  = (1:M2); %%col's for inc water waves from lhs
+      obj.solution.jc_inc2 = M2+1; %%col for inc compressive wave from lhs
+      obj.solution.j_inc1  = M2+1+(1:M1); %%col's for inc water waves from rhs
+      obj.solution.jc_inc1 = M2+M1+2; %%col for inc compressive wave from rhs
       %%
-      obj.solution.j_Q1  = Minc_tot+(1:2); %%col's for [S(0-),psi(0-)] TODO check which is which
-      obj.solution.j_U1  = Minc_tot+3;     %%col for u(0-)
-      obj.solution.j_Q2  = Minc_tot+(4:5); %%col's for [S(0+),psi(0+)]
-      obj.solution.j_U2  = Minc_tot+6;     %%col for u(0+)
+      obj.solution.j_Q2 = Minc_tot+(1:2); %%col's for [S(0-),psi(0-)] TODO check which is which
+      obj.solution.j_U2 = Minc_tot+3;     %%col for u(0-)
+      obj.solution.j_Q1  = Minc_tot+(4:5); %%col's for [S(0+),psi(0+)]
+      obj.solution.j_U1  = Minc_tot+6;     %%col for u(0+)
       obj.solution.j_side_ints = [obj.solution.j_Q2(2),...
          obj.solution.j_U2];%%col's corresponding to psi(0+), u(0+)
 
@@ -308,7 +310,103 @@ methods
          - 2i*diag(obj.rhs_info.BGz)*obj.rhs_info.E;
       % ================================================
 
+      if obj.lhs_info.Dr==0
+         obj = obj.edge_cons_ice_water();
+      elseif obj.params.edge_condition == 0
+         error(['Unimplemented edge condition option:',...
+            num2str(obj.params.edge_condition)]);
+         obj = obj.edge_cons_frozen();
+      elseif obj.params.edge_condition == 1
+         error(['Unimplemented edge condition option:',...
+            num2str(obj.params.edge_condition)]);
+         obj = obj.edge_cons_free();
+      else
+         error(['Unknown edge condition option:',...
+            num2str(obj.params.edge_condition)]);
+      end
+
    end%% end solve
+
+   function obj = edge_cons_ice_water(obj)
+      j_inc_all = [obj.solution.j_inc1,...
+                  obj.solution.j_inc2,...
+                  obj.solution.jc_inc2];
+         %% no more inc compressive wave from left
+      j_unknown = [obj.solution.j_Q2(2),...
+                  obj.solution.j_U2];
+         %%keep psi(0+), and u(0+)
+      M1 = obj.lhs_info.num_inc_waves;
+      M2 = obj.rhs_info.num_inc_waves;
+      j_inc1 = obj.solution.j_inc1;
+      j_inc2 = obj.solution.j_inc2;
+      jc_inc2 = obj.solution.jc_inc2;
+      
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%bending moment eqn
+      MB = obj.rhs_info.M_PM(2,:)*obj.solution.rhs.fluid_coeffs;%% 1 x length(kap2)
+
+      %%inc water waves from RHS
+      MB(j_inc2) = MB(j_inc2)+obj.rhs_info.M_PM(2,1:M2);
+         %%'+' since M has even derivatives
+
+      %%M_1^w:
+      M1w = obj.solution.M_M1w*obj.solution.lhs.fluid_coeffs;
+
+      %%inc water waves from LHS
+      M1w(j_inc1) = M1w(j_inc1)+obj.solution.M_M1w(1:M1);
+
+      Medge = MB-M1w;
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%compression at edge:
+      %%U2=(Bc_inc+Bc_scat)=(M_0^w/1i/kc2/Kc2)+2*Bc_inc
+      M0w = obj.solution.M_M0w*obj.solution.lhs.fluid_coeffs;
+
+      %%inc water waves from LHS
+      M0w(j_inc1) = M0w(j_inc1)+diag(obj.solution.M_M0w(1:M1));
+      %%
+      Bc_inc     = 0;
+      Medge(2,:) = M0w/(1i*obj.rhs_info.kc*obj.rhs_info.Kc);
+
+      %%inc compressive wave from RHS
+      Medge(2,jc_inc2) = Medge(2,jc_inc2)+2;
+
+      %%adjust u(0+) column
+      Medge(2,obj.solution.j_U2) = Medge(2,obj.solution.j_U2)-1;
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      obj.solution.QU2 = -Medge(:,j_unknown)\Medge(:,j_inc_all);%%2xNinc matrix
+
+      %% col's of obj.solution.[lhs,rhs].fluid_coeffs tn2 corresp to
+      %% [Aw_inc2,Ac_inc2,Aw_inc1]
+      %% where incident flex-grav waves are:
+      %%  Aw_inc1  = [Ainc1(1),...,Ainc1(M1)]
+      %%  Aw_inc2  = [Ainc2(1),...,Ainc2(M2)]
+      %% and incident comp wave from rhs is
+      %%  Ac_inc2
+      %% NB no compressive wave from left (water)
+      obj.solution.lhs.fluid_coeffs =...
+         obj.solution.lhs.fluid_coeffs(:,j_inc_all)+...
+            obj.solution.lhs.fluid_coeffs(:,j_unknown)*...
+               obj.solution.QU2;
+      obj.solution.rhs.fluid_coeffs =...
+         obj.solution.rhs.fluid_coeffs(:,j_inc_all)+...
+            obj.solution.rhs.fluid_coeffs(:,j_unknown)*...
+               obj.solution.QU2;
+
+      %% compressive wave
+      obj.solution.rhs.comp_coeff = obj.solution.QU2(2,:);
+         %% - incident compressive wave
+      obj.solution.rhs.comp_coeff(jc_inc2) = obj.solution.rhs.comp_coeff(jc_inc2)-1;
+      %%
+      obj.solution.lhs.comp_coeff = 0*obj.solution.QU2(2,:);
+      %%
+      obj.solution.u =...
+         obj.solution.u(:,j_inc_all)+...
+            obj.solution.u(:,j_unknown)*obj.solution.QU2;
+   end%%edge_conditions_ice_water
 
    function y = calc_res(obj,info)
    %% y=obj.calc_res(Z2,Dr,hr,gamma)=Res(1/f(K),gamma_n),
