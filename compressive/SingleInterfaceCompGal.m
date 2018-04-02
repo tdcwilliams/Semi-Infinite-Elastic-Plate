@@ -116,10 +116,6 @@ methods
       %% get extend lhs and rhs info
       obj.lhs_info = obj.extend_info(obj.lhs_info);
       obj.rhs_info = obj.extend_info(obj.rhs_info);
-
-      %% assemble matrices and forcing vectors
-      obj = obj.assemble();
-
    end%% end constructor
 
    function info = extend_info(obj,info,hmax)
@@ -274,12 +270,14 @@ methods
          obj.lhs_info.F.'*obj.solution.u;%rr2
 
       %%contrib from inc water waves
+      j_inc1 = obj.solution.j_inc1;
       obj.solution.lhs.fluid_coeffs(j_inc1,j_inc1) =...
          + obj.solution.lhs.fluid_coeffs(j_inc1,j_inc1)+...
          + eye(obj.lhs_info.num_inc_waves);
 
       %%contrib from Q1
       %%**CHANGE FOR MINDLIN**
+      j_Q1 = obj.solution.j_Q1;
       obj.solution.lhs.fluid_coeffs(:,j_Q1) =...
          + obj.solution.lhs.fluid_coeffs(:,j_Q1)+...
          + 2i*diag(obj.lhs_info.BGz)*obj.lhs_info.E;
@@ -297,12 +295,14 @@ methods
          obj.rhs_info.F.'*obj.solution.u;%rr2
 
       %%contrib from inc water waves
+      j_inc2 = obj.solution.j_inc2;
       obj.solution.rhs.fluid_coeffs(j_inc2,j_inc2) =...
          + obj.solution.rhs.fluid_coeffs(j_inc2,j_inc2)+...
          + eye(obj.rhs_info.num_inc_waves);
 
       %%contrib from Q2
       %%**CHANGE FOR MINDLIN**
+      j_Q2 = obj.solution.j_Q2;
       obj.solution.rhs.fluid_coeffs(:,j_Q2) =...
          + obj.solution.rhs.fluid_coeffs(:,j_Q2)+...
          - 2i*diag(obj.rhs_info.BGz)*obj.rhs_info.E;
