@@ -165,7 +165,7 @@ methods
       c_right = (2./kap).^obj.params.alpC./cos(kap);
       info.F = diag(c_left)*besJ*diag(c_right);%%same as (37)
 
-      %%
+      %% for edge conditions
       info.fm = info.roots.^2-obj.params.nu1;
       info.fp = info.roots.^2+obj.params.nu1;
       info.E = [-1+0*info.roots,info.Dr*info.fm];
@@ -173,6 +173,10 @@ methods
       info.ME = info.F*diag(1i*info.BGz)*info.E;
       info.M_PM = diag([-1,1])*info.E.'*diag(1./info.Lam);
          %% M=-L*Dr*Lm(w)=-Dr*-fm*(wND)=Dr*fm=+L*Dr*fm
+
+      %% for energy test
+      info.Ew_fac = -.5/info.BG(1);
+      info.Ec_fac = info.kc*info.Kc;
    end
 
    function obj = assemble(obj)
@@ -479,22 +483,74 @@ methods
    end %% edge_cons_free
 
    function y = calc_res(obj,info)
-   %% y=obj.calc_res(Z2,Dr,hr,gamma)=Res(1/f(K),gamma_n),
-   %% where gamma_n is a root of the dispersion relation
-   %% f=1/K/tanh(KH)-(Dr*K^4+lam-mr*mu);
-   %% Z2={lam,mu,H}.
-   lam = obj.params.lam;
-   mu  = obj.params.mu;
-   mr  = info.hr;
-   Dr  = info.Dr;
-   H = info.depth_nondim;
-   gamma = info.roots;
-   %%
-   Gam   = Dr*gamma.^4+lam-mr*mu;
-   Gampr = Gam+4*Dr*gamma.^4;
-   denom = H*(Gam.^2.*gamma.^2-1)+Gampr;
-   y     = -gamma./denom;
+      %% y=obj.calc_res(Z2,Dr,hr,gamma)=Res(1/f(K),gamma_n),
+      %% where gamma_n is a root of the dispersion relation
+      %% f=1/K/tanh(KH)-(Dr*K^4+lam-mr*mu);
+      %% Z2={lam,mu,H}.
+      lam = obj.params.lam;
+      mu  = obj.params.mu;
+      mr  = info.hr;
+      Dr  = info.Dr;
+      H = info.depth_nondim;
+      gamma = info.roots;
+      %%
+      Gam   = Dr*gamma.^4+lam-mr*mu;
+      Gampr = Gam+4*Dr*gamma.^4;
+      denom = H*(Gam.^2.*gamma.^2-1)+Gampr;
+      y     = -gamma./denom;
    end%% calc_res
+
+   function [S,Efacs]=get_scattering_matrix(obj)
+      j_inc2 = obj.solution.j_inc2;
+      jc_inc2 = obj.solution.jc_inc2;
+      j_inc1 = obj.solution.j_inc1;
+
+      Efacs = [obj.rhs_info.Ew_fac,...
+               obj.rhs_info.Ec_fac,...
+               obj.lhs_info.Ew_fac];
+
+      %% water wave from right
+      S(:,1) = [obj.solution.rhs.fluid_coeffs(1,j_inc2(1));... %reflected water wave
+                obj.solution.rhs.comp_coeff(1,j_inc2(1));...   %generated compressive wave
+                obj.solution.lhs.fluid_coeffs(1,j_inc2(1))];   %transmitted water wave
+
+      %% compressive wave from right
+      S(:,2) = [obj.solution.rhs.fluid_coeffs(1,jc_inc2(1));... %generated water wave (rhs)
+                obj.solution.rhs.comp_coeff(1,jc_inc2(1));...   %reflected compressive wave
+                obj.solution.lhs.fluid_coeffs(1,jc_inc2(1))];   %generated water wave (lhs)
+
+      %% water wave from left
+      S(:,3) = [obj.solution.rhs.fluid_coeffs(1,j_inc1(1));... %transmitted water wave
+                obj.solution.rhs.comp_coeff(1,j_inc1(1));...   %generated compressive wave
+                obj.solution.lhs.fluid_coeffs(1,j_inc1(1))];   %reflected water wave
+
+      if obj.lhs_info.hr>0
+         jc_inc1 = obj.solution.jc_inc1;
+
+         % generated compressive wave (lhs)
+         S(4,:) = [obj.solution.rhs.comp_coeff(1,j_inc2(1));...  %by ww from right
+                   obj.solution.rhs.comp_coeff(1,jc_inc2(1));... %by cw from right
+                   obj.solution.rhs.comp_coeff(1,j_inc1(1))];    %by ww from left
+
+         % compressive wave from left
+         S(:,4) = [obj.solution.rhs.fluid_coeffs(1,jc_inc1(1));... %generated water wave (rhs)
+                   obj.solution.rhs.comp_coeff(1,jc_inc1(1));...   %transmitted compressive wave
+                   obj.solution.lhs.fluid_coeffs(1,jc_inc1(1));... %generated water wave (lhs)
+                   obj.solution.lhs.comp_coeff(1,jc_inc1(1))];     %reflected compressive wave
+
+         Efacs(4) = obj.lhs_info.Ec_fac;
+      end
+   end%%get_scattering_matrix
+
+   function Etest = test_energy(obj)
+      [S,Efacs] = obj.get_scattering_matrix()
+      Etest = diag(Efacs)*S*S'*diag(1./Efacs);
+
+      E_in = Efacs(3)
+      E_out = Efacs(3)*abs(S(3,3))^2+...
+               Efacs(2)*abs(S(2,3))^2+...
+               Efacs(1)*abs(S(1,3))^2
+   end%% test_energy
 
 end%%end methods
 end%%class
