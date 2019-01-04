@@ -115,11 +115,11 @@ methods
         end
 
         %% get extend lhs and rhs info
-        obj.lhs_info = obj.extend_info(obj.lhs_info);
-        obj.rhs_info = obj.extend_info(obj.rhs_info);
+        obj.lhs_info = obj.extend_info(obj.lhs_info, obj.rhs_info.depth_nondim);
+        obj.rhs_info = obj.extend_info(obj.rhs_info, obj.rhs_info.depth_nondim);
     end%% end constructor
 
-    function info = extend_info(obj,info,hmax)
+    function info = extend_info(obj,info,H_nondim)
 
         %%Compressional stuff for u problem:
         info.mu_lame = info.youngs/2/(1+obj.params.nu);
@@ -159,11 +159,11 @@ methods
         info.BG   = info.Lam.*info.BGz;%%BG_0^(2)
 
         %% inner products of polynomials with eigenfunctions
-        kap       = -1i*info.roots*info.depth_nondim;
+        kap       = -1i*info.roots*H_nondim;
         [KAP, MU] = meshgrid(kap,2*obj.params.mvec+obj.params.alpC);
         besJ      = besselj(MU,KAP);%% length(mvec) x length(kap1)
         c_left    = gamma(obj.params.alpC)*(obj.params.alpC+2*obj.params.mvec).*(-1).^obj.params.mvec;
-        c_right   = (2./kap).^obj.params.alpC./cos(kap);
+        c_right   = (2./kap).^obj.params.alpC./cosh(info.roots*info.depth_nondim);
         info.F    = diag(c_left)*besJ*diag(c_right);%%same as (37)
 
         %% for edge conditions
