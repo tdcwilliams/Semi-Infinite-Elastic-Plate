@@ -233,12 +233,12 @@ methods
         obj.solution.j_inc1  = M2+1+(1:M1); %%col's for inc water waves from rhs
         obj.solution.jc_inc1 = M2+M1+2; %%col for inc compressive wave from rhs
         %%
-        obj.solution.j_Q2  = Minc_tot+(1:2); %%col's for [S(0-),psi(0-)] TODO check which is which
-        obj.solution.j_U2  = Minc_tot+3;      %%col for u(0-)
-        obj.solution.j_Q1  = Minc_tot+(4:5); %%col's for [S(0+),psi(0+)]
-        obj.solution.j_U1  = Minc_tot+6;      %%col for u(0+)
+        obj.solution.j_Q1  = Minc_tot+(1:2); %%col's for [psi(0-), S(0-)] TODO check which is which
+        obj.solution.j_U1  = Minc_tot+3;      %%col for u(0-)
+        obj.solution.j_Q2  = Minc_tot+(4:5); %%col's for [psi(0+), S(0+)]
+        obj.solution.j_U2  = Minc_tot+6;      %%col for u(0+)
         obj.solution.j_side_ints =...
-            [obj.solution.j_Q2(2), obj.solution.j_U2];%%col's corresponding to psi(0+), u(0+)
+            [obj.solution.j_Q2(1), obj.solution.j_U2];%%col's corresponding to psi(0+), u(0+)
 
         %%matrix M0w=M_M0w*rr2
         obj.solution.M_M0w = -M0_wtr.';%%\int\sig_11 dz=\int(-P)dz=-\int\phi dz
