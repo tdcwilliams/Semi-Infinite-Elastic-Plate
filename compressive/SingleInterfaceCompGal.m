@@ -228,15 +228,15 @@ methods
         M2       = obj.rhs_info.num_inc_waves;
         Minc_tot = M1+M2+2;
         %%
-        obj.solution.j_inc2  = (1:M2); %%col's for inc water waves from lhs
-        obj.solution.jc_inc2 = M2+1; %%col for inc compressive wave from lhs
-        obj.solution.j_inc1  = M2+1+(1:M1); %%col's for inc water waves from rhs
-        obj.solution.jc_inc1 = M2+M1+2; %%col for inc compressive wave from rhs
+        obj.solution.j_inc1  = (1:M1); %%col's for inc water waves from lhs
+        obj.solution.jc_inc1 = M1+1; %%col for inc compressive wave from lhs
+        obj.solution.j_inc2  = M1+1+(1:M2); %%col's for inc water waves from rhs
+        obj.solution.jc_inc2 = M1+M2+2; %%col for inc compressive wave from rhs
         %%
         obj.solution.j_Q1  = Minc_tot+(1:2); %%col's for [psi(0-), S(0-)] TODO check which is which
-        obj.solution.j_U1  = Minc_tot+3;      %%col for u(0-)
-        obj.solution.j_Q2  = Minc_tot+(4:5); %%col's for [psi(0+), S(0+)]
-        obj.solution.j_U2  = Minc_tot+6;      %%col for u(0+)
+        obj.solution.j_Q2  = Minc_tot+(3:4); %%col's for [psi(0+), S(0+)]
+        obj.solution.j_U1  = Minc_tot+5;     %%col for u(0-)
+        obj.solution.j_U2  = Minc_tot+6;     %%col for u(0+)
         obj.solution.j_side_ints =...
             [obj.solution.j_Q2(1), obj.solution.j_U2];%%col's corresponding to psi(0+), u(0+)
 
@@ -275,32 +275,32 @@ methods
         %%scattered waves for LHS
         obj.solution.lhs.fluid_coeffs =...
             -2i*diag(obj.lhs_info.BG)*...
-            obj.lhs_info.F.'*obj.solution.u;%rr2
+            obj.lhs_info.F.'*obj.solution.u;
 
         %%contrib from inc water waves
         j_inc1 = obj.solution.j_inc1;
         obj.solution.lhs.fluid_coeffs(j_inc1, j_inc1) =...
-            + obj.solution.lhs.fluid_coeffs(j_inc1,j_inc1)+...
+            + obj.solution.lhs.fluid_coeffs(j_inc1, j_inc1)+...
             + eye(obj.lhs_info.num_inc_waves);
 
         %%contrib from Q1
         %%**CHANGE FOR MINDLIN**
         j_Q1 = obj.solution.j_Q1;
-        obj.solution.lhs.fluid_coeffs(:,j_Q1) =...
-            + obj.solution.lhs.fluid_coeffs(:,j_Q1)+...
+        obj.solution.lhs.fluid_coeffs(:, j_Q1) =...
+            + obj.solution.lhs.fluid_coeffs(:, j_Q1)+...
             + 2i*diag(obj.lhs_info.BGz)*obj.lhs_info.E;
 
         %%from side integrals;
-        obj.solution.lhs.fluid_coeffs(:,obj.solution.j_side_ints) =...
-            + obj.solution.lhs.fluid_coeffs(:,obj.solution.j_side_ints)+...
-            + [obj.solution.rr_wtr_psi2,obj.solution.rr_wtr_U2];
+        obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints) =...
+            + obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints)+...
+            + [obj.solution.rr_wtr_psi2, obj.solution.rr_wtr_U2];
         % ================================================
 
         % ================================================
         %%scattered waves for RHS
         obj.solution.rhs.fluid_coeffs =...
-            -2i*diag(obj.rhs_info.BG)*...
-            obj.rhs_info.F.'*obj.solution.u;%rr2
+            2i*diag(obj.rhs_info.BG)*...
+            obj.rhs_info.F.'*obj.solution.u;
 
         %%contrib from inc water waves
         j_inc2 = obj.solution.j_inc2;
