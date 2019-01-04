@@ -349,10 +349,10 @@ methods
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%bending moment eqn
-        MB = obj.rhs_info.M_PM(2,:)*obj.solution.rhs.fluid_coeffs;%% 1 x length(kap2)
+        MB = obj.rhs_info.M_PM(2, :)*obj.solution.rhs.fluid_coeffs;%% 1 x length(kap2)
 
         %%inc water waves from RHS
-        MB(j_inc2) = MB(j_inc2)+obj.rhs_info.M_PM(2,1:M2);
+        MB(j_inc2) = MB(j_inc2)+obj.rhs_info.M_PM(2, 1:M2);
             %%'+' since M has even derivatives
 
         %%M_1^w:
@@ -373,13 +373,13 @@ methods
         M0w(j_inc1) = M0w(j_inc1)+diag(obj.solution.M_M0w(1:M1));
         %%
         Bc_inc     = 0;
-        Medge(2,:) = M0w/(1i*obj.rhs_info.kc*obj.rhs_info.Kc);
+        Medge(2, :) = M0w/(1i*obj.rhs_info.kc*obj.rhs_info.Kc);
 
         %%inc compressive wave from RHS
-        Medge(2,jc_inc2) = Medge(2,jc_inc2)+2;
+        Medge(2, jc_inc2) = Medge(2, jc_inc2)+2;
 
         %%adjust u(0+) column
-        Medge(2,obj.solution.j_U2) = Medge(2,obj.solution.j_U2)-1;
+        Medge(2, obj.solution.j_U2) = Medge(2, obj.solution.j_U2)-1;
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -404,13 +404,14 @@ methods
 
         %% compressive wave
         obj.solution.rhs.comp_coeff = obj.solution.QU2(2,:);
-            %% - incident compressive wave
+        %% - incident compressive wave from right
+        %% - NB index drops 1 since we lose incident compressive wave from left
+        jc_inc2 = jc_inc2 -1;
         obj.solution.rhs.comp_coeff(jc_inc2) = obj.solution.rhs.comp_coeff(jc_inc2)-1;
         %%
-        obj.solution.lhs.comp_coeff = 0*obj.solution.QU2(2,:);
-        %%
+        obj.solution.lhs.comp_coeff = 0*obj.solution.QU2(2, :);
         obj.solution.u =...
-            obj.solution.u(:,j_inc_all)+...
+            obj.solution.u(:, j_inc_all)+...
                 obj.solution.u(:,j_unknown)*obj.solution.QU2;
     end%%edge_cons_ice_water
 
