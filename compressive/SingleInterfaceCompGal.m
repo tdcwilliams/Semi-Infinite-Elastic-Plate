@@ -207,7 +207,7 @@ methods
         gam_H_lhs = obj.lhs_info.roots*obj.lhs_info.depth_nondim;
         gam_H_rhs = obj.lhs_info.roots*obj.rhs_info.depth_nondim;
         denom     = 1+exp(-2*gam_H_lhs);
-        num0      = 1-exp(-2*gam_H_lhs);
+        num0      = 1-exp(-2*gam_H_rhs);
         exfac     = exp(gam_H_rhs-gam_H_lhs);
         M0_wtr    = 1./obj.lhs_info.roots.^2./obj.lhs_info.Lam+...
                         -1./obj.lhs_info.roots.*exfac.*num0./denom;
