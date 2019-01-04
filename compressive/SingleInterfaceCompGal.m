@@ -504,9 +504,15 @@ methods
     end%% calc_res
 
     function [S, Efacs] = get_scattering_matrix(obj)
+        j_inc1  = obj.solution.j_inc1;
         j_inc2  = obj.solution.j_inc2;
         jc_inc2 = obj.solution.jc_inc2;
-        j_inc1  = obj.solution.j_inc1;
+        if obj.lhs_info.hr>0
+            jc_inc1 = obj.solution.jc_inc1;
+        else
+            j_inc2 = j_inc2 - 1;
+            jc_inc2 = jc_inc2 - 1;
+        end
 
         Efacs = [obj.rhs_info.Ew_fac,...
                     obj.rhs_info.Ec_fac,...
@@ -528,8 +534,6 @@ methods
                      obj.solution.lhs.fluid_coeffs(1, j_inc1(1))];    %reflected water wave
 
         if obj.lhs_info.hr>0
-            jc_inc1 = obj.solution.jc_inc1;
-
             % generated compressive wave (lhs)
             S(4, :) = [obj.solution.rhs.comp_coeff(1, j_inc2(1));...  %by ww from right
                          obj.solution.rhs.comp_coeff(1, jc_inc2(1));... %by cw from right
