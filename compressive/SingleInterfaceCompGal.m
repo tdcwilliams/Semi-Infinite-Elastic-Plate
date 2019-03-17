@@ -282,9 +282,10 @@ methods
 
         %%contrib from inc water waves
         j_inc1 = obj.solution.j_inc1;
-        obj.solution.lhs.fluid_coeffs(j_inc1, j_inc1) =...
-            + obj.solution.lhs.fluid_coeffs(j_inc1, j_inc1)+...
-            + eye(obj.lhs_info.num_inc_waves);
+        M1 = obj.lhs_info.num_inc_waves;
+        obj.solution.lhs.fluid_coeffs(1:M1, j_inc1) =...
+            + obj.solution.lhs.fluid_coeffs(1:M1, j_inc1)+...
+            + eye(M1);
 
         %%contrib from Q1
         %%**CHANGE FOR MINDLIN**
