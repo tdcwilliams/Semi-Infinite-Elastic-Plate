@@ -23,13 +23,13 @@ function [R,T,y] = SUB_RTstep_Gal(...
 %%   y=...
 
 if nargin==0
-   period      = 20;%% wave period [s]
+   period      = 10;%% wave period [s]
    theta_inc   = 0;%% wave incident angle [degrees]
    H_dim       = 100;%% water depth [m]
    phys_vars   = {period,theta_inc,H_dim};
    %%
-   hh    = [0,10];
-   EE    = 2e9;
+   hh    = [1,0];
+   EE    = 5.45e9;
    DO_KC = 0;
 end
 
