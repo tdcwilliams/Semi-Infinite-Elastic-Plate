@@ -417,11 +417,10 @@ rr2 = -2i*diag(BG1)*F1.'*uuB;
 
 %%contrib from inc water waves
 %rr2(1)      = rr2(1)+Ainc2;
-rr2(j_inc1,j_inc1) = rr2(j_inc1,j_inc1)+eye(M1);
+rr2(1:M1,j_inc1) = rr2(1:M1,j_inc1)+eye(M1);
 
 %%contrib from Q1
 %%**CHANGE FOR MINDLIN**
-%rr2(:,2:3) = rr2(:,2:3)+2i*diag(BGz1B)*E1B;
 rr2(:,j_Q1) = rr2(:,j_Q1)+2i*diag(BGz1B)*E1B;
 
 %%from side integrals;
@@ -434,11 +433,10 @@ tt2 = 2i*diag(BG2)*F2.'*uuB;
 
 %%contrib from inc water waves
 %tt2(1) = tt2(1)+Binc2;
-tt2(j_inc2,j_inc2) = tt2(j_inc2,j_inc2)+eye(M2);
+tt2(1:M2,j_inc2) = tt2(1:M2,j_inc2)+eye(M2);
 
 %%contrib from Q2
 %%**CHANGE FOR MINDLIN**
-%tt2(:,4:5) = tt2(:,4:5)-2i*diag(BGz2B)*E2B;%%like W&P paper (but Q vector -> -Q)
 tt2(:,j_Q2) = tt2(:,j_Q2)-2i*diag(BGz2B)*E2B;%%like W&P paper (but Q vector -> -Q)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
