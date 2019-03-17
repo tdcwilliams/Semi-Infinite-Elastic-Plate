@@ -24,7 +24,7 @@ function [R1,T1,R2,T2,Smat,y]=SUB_TMstep_Gal(...
 do_test  = 0;%%do_test==1 => print |R|&|T|, and check energy
 if nargin==0
    do_test  = 1;
-   if 0
+   if 1
       hh = [0,1];
    elseif 0
       hh = [1,2];
@@ -64,7 +64,7 @@ if ~exist('rho_wtr')
    rho_wtr  = prams(3);
 end
 if ~exist('DO_KC')
-   DO_KC = 1;
+   DO_KC = 0;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
