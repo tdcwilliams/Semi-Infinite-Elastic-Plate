@@ -28,7 +28,7 @@ methods
             bc = 0;%% frozen edge conditions;
         end
         if ~exist('NN')
-            NN = [10 1000];%% [N_poly, N_roots];
+            NN = [50 1000];%% [N_poly, N_roots];
         end
         if ~exist('MM')
             MM = [1 1];%% [M1, M2]
@@ -48,6 +48,7 @@ methods
         obj.params.edge_condition = bc;
         obj.params.FAST_KERNEL    = 0;
         obj.params.INC_SUB        = 1;
+        obj.params.CPL_COMP       = 0;
 
         if length(NN)==1
           decay_exp = 2;
@@ -119,7 +120,7 @@ methods
         obj.rhs_info = obj.extend_info(obj.rhs_info, obj.rhs_info.depth_nondim);
     end%% end constructor
 
-    function info = extend_info(obj,info,H_nondim)
+    function info = extend_info(obj, info, H_rhs_nondim)
 
         %%Compressional stuff for u problem:
         info.mu_lame = info.youngs/2/(1+obj.params.nu);
@@ -159,7 +160,7 @@ methods
         info.BG   = info.Lam.*info.BGz;%%BG_0^(2)
 
         %% inner products of polynomials with eigenfunctions
-        kap       = -1i*info.roots*H_nondim;
+        kap       = -1i*info.roots*H_rhs_nondim;
         [KAP, MU] = meshgrid(kap,2*obj.params.mvec+obj.params.alpC);
         besJ      = besselj(MU,KAP);%% length(mvec) x length(kap1)
         c_left    = gamma(obj.params.alpC)*(obj.params.alpC+2*obj.params.mvec).*(-1).^obj.params.mvec;
@@ -169,7 +170,7 @@ methods
         %% for edge conditions
         info.fm = info.roots.^2-obj.params.nu1;
         info.fp = info.roots.^2+obj.params.nu1;
-        info.E  = [-1+0*info.roots,info.Dr*info.fm];
+        info.E  = [-1+0*info.roots, info.Dr*info.fm];%[M, w] - go with [\psi, S]
             %% S=-(L^2/D1)*D*w_xxx=D/D1*\pa_{xND}^3(wND), psi=-w_x
         info.ME   = info.F*diag(1i*info.BGz)*info.E;
         info.M_PM = diag([-1,1])*info.E.'*diag(1./info.Lam);
@@ -233,7 +234,7 @@ methods
         obj.solution.j_inc2  = M1+1+(1:M2); %%col's for inc water waves from rhs
         obj.solution.jc_inc2 = M1+M2+2; %%col for inc compressive wave from rhs
         %%
-        obj.solution.j_Q1  = Minc_tot+(1:2); %%col's for [psi(0-), S(0-)] TODO check which is which
+        obj.solution.j_Q1  = Minc_tot+(1:2); %%col's for [psi(0-), S(0-)]
         obj.solution.j_Q2  = Minc_tot+(3:4); %%col's for [psi(0+), S(0+)]
         obj.solution.j_U1  = Minc_tot+5;     %%col for u(0-)
         obj.solution.j_U2  = Minc_tot+6;     %%col for u(0+)
@@ -258,9 +259,11 @@ methods
                 obj.rhs_info.ME,...
                 ZM,...
                 ZM];
-        obj.solution.forcing_u(:, obj.solution.j_side_ints) =...
-            obj.solution.forcing_u(:,obj.solution.j_side_ints)+...
-            obj.lhs_info.F*[obj.solution.rr_wtr_psi2, obj.solution.rr_wtr_U2];
+        if obj.params.CPL_COMP==1
+            obj.solution.forcing_u(:, obj.solution.j_side_ints) =...
+                obj.solution.forcing_u(:,obj.solution.j_side_ints)+...
+                obj.lhs_info.F*[obj.solution.rr_wtr_psi2, obj.solution.rr_wtr_U2];
+        end
     end%% end assemble
 
     function obj = solve(obj)
@@ -290,10 +293,12 @@ methods
             + obj.solution.lhs.fluid_coeffs(:, j_Q1)+...
             + 2i*diag(obj.lhs_info.BGz)*obj.lhs_info.E;
 
-        %%from side integrals;
-        obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints) =...
-            + obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints)+...
-            + [obj.solution.rr_wtr_psi2, obj.solution.rr_wtr_U2];
+        if obj.params.CPL_COMP==1
+            %%from side integrals;
+            obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints) =...
+                + obj.solution.lhs.fluid_coeffs(:, obj.solution.j_side_ints)+...
+                + [obj.solution.rr_wtr_psi2, obj.solution.rr_wtr_U2];
+        end
         % ================================================
 
         % ================================================
@@ -303,10 +308,11 @@ methods
             obj.rhs_info.F.'*obj.solution.u;
 
         %%contrib from inc water waves
-        j_inc2 = obj.solution.j_inc2;
-        obj.solution.rhs.fluid_coeffs(j_inc2,j_inc2) =...
-            + obj.solution.rhs.fluid_coeffs(j_inc2,j_inc2)+...
-            + eye(obj.rhs_info.num_inc_waves);
+        j_inc2 = obj.solution.j_inc2;%right columns
+        M2 = obj.rhs_info.num_inc_waves;
+        obj.solution.rhs.fluid_coeffs(1:M2, j_inc2) =...
+            + obj.solution.rhs.fluid_coeffs(1:M2, j_inc2)+...
+            + eye(M2);
 
         %%contrib from Q2
         %%**CHANGE FOR MINDLIN**
@@ -346,6 +352,7 @@ methods
         j_inc1  = obj.solution.j_inc1;
         j_inc2  = obj.solution.j_inc2;
         jc_inc2 = obj.solution.jc_inc2;
+        M_edge = zeros(2, length(j_unknown) + M1 + M2 + 1);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%bending moment eqn
@@ -355,34 +362,41 @@ methods
         MB(j_inc2) = MB(j_inc2)+obj.rhs_info.M_PM(2, 1:M2);
             %%'+' since M has even derivatives
 
-        %%M_1^w:
-        M1w = obj.solution.M_M1w*obj.solution.lhs.fluid_coeffs;
+        Medge(1, :) = MB;
+        if obj.params.CPL_COMP==1
+            %%M_1^w:
+            M1w = obj.solution.M_M1w*obj.solution.lhs.fluid_coeffs;
 
-        %%inc water waves from LHS
-        M1w(j_inc1) = M1w(j_inc1)+obj.solution.M_M1w(1:M1);
+            %%inc water waves from LHS
+            M1w(j_inc1) = M1w(j_inc1)+obj.solution.M_M1w(1:M1);
 
-        Medge = MB-M1w;
+            Medge(1, :) = Medge(1, :) - M1w;
+        end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%compression at edge:
-        %%U2=(Bc_inc+Bc_scat)=(M_0^w/1i/kc2/Kc2)+2*Bc_inc
-        M0w = obj.solution.M_M0w*obj.solution.lhs.fluid_coeffs;
-
-        %%inc water waves from LHS
-        M0w(j_inc1) = M0w(j_inc1)+diag(obj.solution.M_M0w(1:M1));
-        %%
-        Bc_inc     = 0;
-        Medge(2, :) = M0w/(1i*obj.rhs_info.kc*obj.rhs_info.Kc);
-
         %%inc compressive wave from RHS
-        Medge(2, jc_inc2) = Medge(2, jc_inc2)+2;
+        Medge(2, jc_inc2) = 2;
 
+        %%U2=(Bc_inc+Bc_scat)=(M_0^w/1i/kc2/Kc2)+2*Bc_inc
         %%adjust u(0+) column
-        Medge(2, obj.solution.j_U2) = Medge(2, obj.solution.j_U2)-1;
+        Medge(2, obj.solution.j_U2) = -1;
+
+        if obj.params.CPL_COMP==1
+            M0w = obj.solution.M_M0w*obj.solution.lhs.fluid_coeffs;
+
+            %%inc water waves from LHS
+            M0w(j_inc1) = M0w(j_inc1)+diag(obj.solution.M_M0w(1:M1));
+            %%
+            Medge(2, :) = Medge(2, :) + M0w/(1i*obj.rhs_info.kc*obj.rhs_info.Kc);
+        end
+
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        Medge
         obj.solution.QU2 = -Medge(:, j_unknown)\Medge(:, j_inc_all);%%2xNinc matrix
 
         %% col's of obj.solution.[lhs,rhs].fluid_coeffs tn2 corresp to
@@ -515,35 +529,35 @@ methods
         end
 
         Efacs = [obj.rhs_info.Ew_fac,...
-                    obj.rhs_info.Ec_fac,...
-                    obj.lhs_info.Ew_fac];
+                 obj.rhs_info.Ec_fac,...
+                 obj.lhs_info.Ew_fac];
 
         %% water wave from right
-        S(:, 1) = [obj.solution.rhs.fluid_coeffs(1, j_inc2(1));... %reflected water wave
-                     obj.solution.rhs.comp_coeff(1, j_inc2(1));...    %generated compressive wave
-                     obj.solution.lhs.fluid_coeffs(1 ,j_inc2(1))];    %transmitted water wave
+        S(:, 1) = [obj.solution.rhs.fluid_coeffs(1, j_inc2(1));...  %reflected water wave
+                   obj.solution.rhs.comp_coeff(1,   j_inc2(1));...  %generated compressive wave
+                   obj.solution.lhs.fluid_coeffs(1, j_inc2(1))];    %transmitted water wave
 
         %% compressive wave from right
-        S(:, 2) = [obj.solution.rhs.fluid_coeffs(1 ,jc_inc2(1));... %generated water wave (rhs)
-                     obj.solution.rhs.comp_coeff(1 ,jc_inc2(1));...    %reflected compressive wave
-                     obj.solution.lhs.fluid_coeffs(1 ,jc_inc2(1))];    %generated water wave (lhs)
+        S(:, 2) = [obj.solution.rhs.fluid_coeffs(1, jc_inc2(1));... %generated water wave (rhs)
+                   obj.solution.rhs.comp_coeff(1,   jc_inc2(1));... %reflected compressive wave
+                   obj.solution.lhs.fluid_coeffs(1, jc_inc2(1))];   %generated water wave (lhs)
 
         %% water wave from left
-        S(:, 3) = [obj.solution.rhs.fluid_coeffs(1, j_inc1(1));... %transmitted water wave
-                     obj.solution.rhs.comp_coeff(1, j_inc1(1));...    %generated compressive wave
-                     obj.solution.lhs.fluid_coeffs(1, j_inc1(1))];    %reflected water wave
+        S(:, 3) = [obj.solution.rhs.fluid_coeffs(1,   j_inc1(1));... %transmitted water wave
+                     obj.solution.rhs.comp_coeff(1,   j_inc1(1));... %generated compressive wave
+                     obj.solution.lhs.fluid_coeffs(1, j_inc1(1))];   %reflected water wave
 
         if obj.lhs_info.hr>0
             % generated compressive wave (lhs)
             S(4, :) = [obj.solution.rhs.comp_coeff(1, j_inc2(1));...  %by ww from right
-                         obj.solution.rhs.comp_coeff(1, jc_inc2(1));... %by cw from right
-                         obj.solution.rhs.comp_coeff(1, j_inc1(1))];     %by ww from left
+                       obj.solution.rhs.comp_coeff(1, jc_inc2(1));... %by cw from right
+                       obj.solution.rhs.comp_coeff(1, j_inc1(1))];    %by ww from left
 
             % compressive wave from left
             S(:, 4) = [obj.solution.rhs.fluid_coeffs(1, jc_inc1(1));... %generated water wave (rhs)
-                         obj.solution.rhs.comp_coeff(1, jc_inc1(1));...    %transmitted compressive wave
-                         obj.solution.lhs.fluid_coeffs(1, jc_inc1(1));... %generated water wave (lhs)
-                         obj.solution.lhs.comp_coeff(1, jc_inc1(1))];      %reflected compressive wave
+                       obj.solution.rhs.comp_coeff(1,   jc_inc1(1));... %transmitted compressive wave
+                       obj.solution.lhs.fluid_coeffs(1, jc_inc1(1));... %generated water wave (lhs)
+                       obj.solution.lhs.comp_coeff(1,   jc_inc1(1))];   %reflected compressive wave
 
             Efacs(4) = obj.lhs_info.Ec_fac;
         end
@@ -551,12 +565,36 @@ methods
 
     function Etest = test_energy(obj)
         [S, Efacs] = obj.get_scattering_matrix()
-        Etest = diag(Efacs)*S*S'*diag(1./Efacs);
 
-        E_in  = Efacs(3)
-        E_out = Efacs(3)*abs(S(3, 3))^2+...
-                    Efacs(2)*abs(S(2, 3))^2+...
-                    Efacs(1)*abs(S(1, 3))^2
+        N = length(Efacs);
+        E_out = 0*Efacs;
+        for j=1:N
+            E_out(j) = Efacs*abs(S(:, j).^2);
+        end
+        E_out
+        Etest = E_out./Efacs
+
+        %% ww from right
+        E_in  = Efacs(1);
+        E_out = Efacs(3)*abs(S(3, 1))^2+...     %transmitted ww
+                Efacs(2)*abs(S(2, 1))^2+...     %generated cw
+                Efacs(1)*abs(S(1, 1))^2;        %reflected ww
+                E_out, Efacs*abs(S(:, 1).^2)
+        E_out/E_in
+
+        %% cw from right
+        E_in  = Efacs(2);
+        E_out = Efacs(3)*abs(S(3, 2))^2+...     %transmitted ww
+                Efacs(2)*abs(S(2, 2))^2+...     %generated cw
+                Efacs(1)*abs(S(1, 2))^2;        %reflected ww
+        E_out/E_in
+
+        %% ww from left
+        E_in  = Efacs(3);
+        E_out = Efacs(3)*abs(S(3, 3))^2+...     %reflected ww
+                Efacs(2)*abs(S(2, 3))^2+...     %generated cw
+                Efacs(1)*abs(S(1, 3))^2;        %transmitted ww
+        E_out/E_in
     end%% test_energy
 
 end%%end methods
